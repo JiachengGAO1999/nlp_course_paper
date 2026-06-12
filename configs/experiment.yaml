@@ -167,5 +167,6 @@ paths:
   pilot_samples: "data/layer1/splits/pilot.jsonl"
   formal_samples: "data/layer1/splits/formal.jsonl"
   mc_dir: "data/layer1/mc"
+  dialogue_dir: "data/layer1/dialogues"
   audit_dir: "data/layer1/audits"
   preview_dir: "data/layer1/previews"

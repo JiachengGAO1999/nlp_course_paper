@@ -53,6 +53,7 @@ Generated Layer 1 artifacts are organized as:
 data/raw/                 Downloaded benchmark source files
 data/layer1/splits/       MuSiQue candidate, smoke, pilot, formal, spares splits
 data/layer1/mc/           Multiple-choice converted samples
+data/layer1/dialogues/    Generated multi-turn dialogue histories
 data/layer1/audits/       Sampling and MC conversion audit summaries
 data/layer1/previews/     Human-readable inspection previews
 ```
