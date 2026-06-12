@@ -123,6 +123,10 @@ Do not optimize the generator merely to make the answer model fail. Full History
 should remain a meaningful upper bound. Hard samples should be used first for
 calibration before they enter the formal distribution.
 
+Full implementation details — template strategies, assistant behavior matrix,
+40-sample allocation table, and compression prompt templates — are in
+[docs/generator_spec.md](generator_spec.md).
+
 ## Diagnostic Options
 
 Each sample uses 3-4 answer options. Incorrect options should be near-miss
@@ -180,15 +184,27 @@ compressed-history budget. The compression prompt should request preservation of
 facts, updates, constraints, exclusions, soft preferences, and candidate
 attributes, but it must forbid solving the final question.
 
+The compression prompt template is defined in
+[docs/generator_spec.md](generator_spec.md). The default summarizer model is the
+same Qwen3-8B used for answering; an optional ablation with a smaller model
+(Qwen3-1.5B) is reserved for supplementary experiments.
+
 This condition represents a practical generic agent compression strategy. Its
 quality should be evaluated through evidence retention, hallucination,
 constraint preservation, stale-state handling, and downstream QA accuracy.
 
 ### Hybrid Summary + Recent Turns
 
-Summarize older dialogue history with an LLM and keep the most recent 1-2 turns
-verbatim, within the compressed-history budget. This represents the common
-pattern of compressed long-term context plus raw recent context.
+Summarize older dialogue history with an LLM and keep the most recent 1 complete
+turn verbatim, within the compressed-history budget. Budget allocation: summary
+≤400 tokens, recent turn ≤200 tokens. If the most recent turn exceeds 250 tokens,
+keep only the most recent user message verbatim.
+
+This represents the common pattern of compressed long-term context plus raw recent
+context, similar to the compaction strategy used by Claude Agent SDK and other
+production agent frameworks.
+
+Compression prompt templates are defined in [docs/generator_spec.md](generator_spec.md).
 
 ### Sliding Window
 
@@ -267,6 +283,11 @@ Automatic:
 - compute token counts and compression ratios;
 - compute output lengths.
 
+For hard smoke v2, all LLM-generated compression artifacts are manually audited:
+6 samples × 2 LLM compression conditions = 12 artifacts. Automatic span or
+overlap matching is only a pre-audit hint for these artifacts because LLM
+summaries may paraphrase evidence.
+
 Manual audit:
 
 - sample 10-20% of generated data;
@@ -290,13 +311,14 @@ Manual audit:
      and `hybrid_summary_recent` first;
    - inspect whether Full History is too easy or too hard.
 
-   Difficulty interpretation:
-   - Full History near 100%: likely ceiling effect; increase difficulty before pilot.
-   - Full History around 85-95%: healthy for main pilot.
-   - Full History around 70-80%: acceptable for a hard subset, but maybe too hard
-     for the formal main distribution.
-   - Full History far below 70%: task difficulty is confounded with compression
-     effects; simplify or isolate as supplementary hard cases.
+   Difficulty interpretation (6 samples, discrete counts):
+   - 6/6 correct: possible ceiling; check explanation quality and whether summary
+     conditions show differentiation. If no differentiation, increase difficulty.
+   - 5/6 correct: ideal for main pilot.
+   - 4/6 correct: acceptable for a hard subset; maybe too hard for formal main
+     distribution.
+   - ≤3/6 correct: task difficulty confounded with compression effects;
+     simplify or isolate as supplementary hard cases.
 
 3. Pilot
    - 8-12 samples;

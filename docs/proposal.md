@@ -33,6 +33,14 @@
 > 在相同 compressed-history budget 下，不同历史压缩/保留策略会怎样影响
 > 模型对多轮状态、约束、证据和干扰信息的使用？
 
+当前工业界 agent 系统（Claude Agent SDK、MemGPT/Letta、LangChain 等）广泛使用
+LLM 生成的摘要来做对话历史压缩，但缺乏对"压缩产物质量如何影响下游推理"的系统
+诊断。本文引入 Oracle Fact-State Summary（规则压缩上界）作为参照：它是理想化
+压缩，通过直接读取 ground-truth 结构化标签完美保留关键证据，不会 hallucinate
+或误分类约束。与 LLM 生成的摘要对比，oracle 条件可以测量 LLM 压缩相对于完美
+信息提取的损失——包括关键证据保留、hard/soft constraint 区分、stale state 处理
+和 hallucination——从而将"压缩导致错误"从"模型本身推理出错"中分离出来。
+
 ## 数据设计
 
 主实验使用英文 synthetic diagnostic testbed，课程论文用中文撰写。
@@ -59,6 +67,8 @@
 需要中间推理才能使用的约束、长距离证据、未显式标注的 hard/soft preference
 冲突、细微状态更新，以及分散候选属性整合。正式 pilot 前会先构造 hard smoke
 v2，用少量高难样本校准 Qwen3-8B thinking 模型是否存在 ceiling effect。
+生成器实现规范（难度模式模板策略、Assistant 行为矩阵、40 样本分配表、
+压缩 prompt 模板）见 `docs/generator_spec.md`。
 
 ## 历史压缩条件
 

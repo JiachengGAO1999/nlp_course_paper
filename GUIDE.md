@@ -104,10 +104,16 @@ by the compressed-history budget.
    - Represents a practical generic agent compression strategy.
    - Evaluates whether the summarizer retains required evidence, preserves
      hard/soft constraint distinctions, and avoids hallucinating task state.
+   - Summarizer runs with thinking disabled, temperature 0.0, max_tokens 1024
+     (see `docs/generator_spec.md` §6 for full inference settings).
 
 5. `hybrid_summary_recent`
-   - LLM-generated summary of older history plus the most recent 1-2 turns kept
-     verbatim.
+   - LLM-generated summary of older history plus the most recent 1 complete turn
+     kept verbatim.
+   - Budget allocation: summary ≤400 tokens, recent turn ≤200 tokens.
+   - If the most recent turn exceeds 250 tokens (e.g., unusually long assistant
+     message), keep only the most recent user message verbatim and allocate the
+     remainder to the summary.
    - Represents a common practical pattern: compressed long-term history plus
      raw recent context.
    - Tests whether preserving recent turns mitigates summary omissions or
@@ -146,6 +152,16 @@ Track:
 If a compressed variant lacks the evidence needed to answer the question, the
 result should be labeled `insufficient_context_for_answer` rather than treated
 as a pure reasoning failure.
+
+For hard smoke v2, all LLM-generated compression artifacts are manually audited:
+
+```text
+6 hard-smoke samples × 2 LLM compression conditions = 12 artifacts
+```
+
+For these artifacts, automatic span/overlap checks are only hints because LLM
+summaries may paraphrase evidence. Final evidence-retention, hallucination,
+stale-state, and answerability labels come from manual inspection.
 
 ## Diagnostic Phenomena
 
@@ -214,20 +230,30 @@ Difficulty modes to inject:
   - Distribute candidate attributes across turns so the final answer requires
     assembling entity-level state, not matching a single sentence.
 
+Full implementation details — including template strategies for each difficulty
+mode, assistant behavior specifications, and the 40-sample phenomenon × difficulty
+× assistant × evidence-position allocation table — are in
+[docs/generator_spec.md](docs/generator_spec.md). The generator spec also defines
+compression prompt templates for `llm_generated_summary` and
+`hybrid_summary_recent`.
+
 The goal is not to make Full History fail catastrophically. A healthy hard
 subset should be challenging enough to avoid ceiling effects while preserving a
 meaningful uncompressed upper bound.
 
-Target difficulty for hard smoke v2:
+Target difficulty for hard smoke v2 (6 samples):
 
-- `full_history`: roughly 85-95% accuracy is ideal; 70-80% is acceptable for a
-  deliberately hard subset but may be too difficult for the main formal set;
+- `full_history`: 5/6 correct is ideal; 4/6 is acceptable for a deliberately
+  hard subset but may be too difficult for the main formal set; 6/6 correct
+  suggests possible ceiling (check explanation quality and summary-condition
+  differentiation before proceeding);
 - `oracle_fact_state_summary`: should be close to Full History if compression is
   faithful;
 - `llm_generated_summary` and `hybrid_summary_recent`: should reveal whether
   practical compression loses or distorts answer-critical state;
-- if Full History remains near 100%, increase generator difficulty before pilot;
-- if Full History falls far below 70%, separate those samples into a hard subset
+- if Full History remains 6/6 with no cross-condition differentiation,
+  increase generator difficulty before pilot;
+- if Full History falls to 3/6 or below, separate those samples into a hard subset
   rather than using them as the main formal distribution.
 
 ## Diagnostic Distractors
@@ -434,11 +460,21 @@ Forbidden:
 
 - 2026-06-10: Design grilling completed.
 - 2026-06-10: Project guide and design documents initialized.
+- 2026-06-12: Basic smoke (4 samples) generated, locally validated, and inferred
+  on Qwen3-8B. Results: 95% overall accuracy. Full history 100%, oracle
+  compression 100%, sliding window 75% (1 trivial evidence-loss error). Smoke
+  revealed ceiling effect risk and over-redundant assistant messages.
+- 2026-06-12: Experimental conditions redesigned (5+3 structure, benchmark-inspired
+  difficulty modes, compression quality metrics). Generator specification written.
 
 ## Next Steps
 
-1. Implement hard smoke v2 samples with benchmark-inspired difficulty modes.
-2. Add `llm_generated_summary` and `hybrid_summary_recent` generation.
-3. Add compression-quality checks for evidence retention and answerability.
-4. Run hard smoke v2 before expanding to pilot.
+1. Implement hard smoke v2 generator with the 6 difficulty modes and assistant
+   behavior matrix defined in `docs/generator_spec.md`.
+2. Generate 6 hard smoke v2 samples covering all 4 phenomena.
+3. Add `llm_generated_summary` and `hybrid_summary_recent` variant builders with
+   compression quality checks.
+4. Run hard smoke v2 inference and calibrate difficulty before expanding.
 5. Only then build the 8-12 sample pilot set.
+6. Run pilot, inspect accuracy and compression quality at 12-sample scale.
+7. If pilot passes acceptance criteria, freeze config and generate 40 formal samples.
