@@ -25,12 +25,12 @@ When the full multi-turn dialogue history cannot be retained under context
 budget pressure, which compressed history representation best preserves
 downstream multi-turn reasoning QA reliability under a fixed reasoning budget?
 
-The main comparison is not "which history format does the model prefer". The
-main comparison is:
+The main comparison is not "which history format does the model prefer" or
+"does deleting old evidence hurt performance". The main comparison is:
 
-> Under a similar compressed-history budget, which compression strategy preserves
-> useful task state, avoids misleading stale context, and maintains answer
-> accuracy at lower input cost?
+> Under a similar compressed-history budget, which practical or oracle
+> compression strategy preserves answer-critical evidence, avoids misleading
+> stale context, and maintains answer accuracy at lower input cost?
 
 ## Fixed Design Decisions
 
@@ -39,8 +39,12 @@ main comparison is:
 - Data type: rule-based controlled synthetic diagnostic testbed.
 - Dataset role: diagnostic testbed, not a general benchmark.
 - Core logic: generated from structured world state by deterministic rules.
-- LLM role: optional surface paraphrase only; it must not decide gold answers,
-  required evidence, option diagnostics, or distractor labels.
+- LLM role in data generation: optional surface paraphrase only; it must not
+  decide gold answers, required evidence, option diagnostics, or distractor
+  labels.
+- LLM role in compression: used for `llm_generated_summary` and
+  `hybrid_summary_recent` conditions, where summary quality is part of the
+  evaluated compression pipeline.
 - Main model: Qwen3-8B served by vLLM with Qwen3 reasoning parser.
 - Main inference setting: thinking enabled with fixed budgeted thinking.
 - Main answer format: `Final Answer: <A/B/C/D>` plus brief evidence-based
@@ -82,35 +86,66 @@ by the compressed-history budget.
    - No compressed-history budget.
    - Serves as uncompressed quality/cost upper bound.
 
-2. `sliding_window`
-   - Budget-aware dynamic retention.
-   - Keeps the most recent complete turns that fit within the compressed-history
-     budget.
-   - Does not truncate individual messages.
-
-3. `user_only_history`
+2. `user_only_history`
    - Keeps only user messages within the compressed-history budget.
    - Tests whether assistant responses mainly add useful state or redundant cost.
 
-4. `oracle_dialogue_summary`
-   - Rule-generated natural-language summary of the dialogue history.
-   - Constrained by compressed-history budget.
-   - Preserves relevant facts, updates, constraints, and exclusions without
-     solving the final question.
-
-5. `oracle_fact_state_summary`
+3. `oracle_fact_state_summary`
    - Rule-generated semi-structured task-state compression.
    - Constrained by compressed-history budget.
    - Preserves current facts, latest states, hard constraints, soft preferences,
      exclusions, and temporal relations.
    - Must not include the final reasoning conclusion or leak the correct option.
+   - Serves as the rule-based compression upper bound.
 
-Optional supplementary condition:
+4. `llm_generated_summary`
+   - LLM-generated one-shot summary of the full dialogue history under the same
+     compressed-history budget.
+   - Represents a practical generic agent compression strategy.
+   - Evaluates whether the summarizer retains required evidence, preserves
+     hard/soft constraint distinctions, and avoids hallucinating task state.
 
-- `llm_generated_summary`
-  - Used only as a supplementary realism check.
-  - Not part of the main causal comparison, because it mixes compression strategy
-    with summarizer quality.
+5. `hybrid_summary_recent`
+   - LLM-generated summary of older history plus the most recent 1-2 turns kept
+     verbatim.
+   - Represents a common practical pattern: compressed long-term history plus
+     raw recent context.
+   - Tests whether preserving recent turns mitigates summary omissions or
+     update/recency failures.
+
+Supplementary / diagnostic conditions:
+
+- `sliding_window`
+  - Naive recency baseline.
+  - Useful for showing the lower bound of deletion-based context management, but
+    not a core comparison because failures can be trivial evidence loss.
+
+- `oracle_dialogue_summary`
+  - Rule-generated natural-language oracle summary.
+  - May be used in pilot to test whether it adds information beyond
+    `oracle_fact_state_summary`; if redundant, omit from formal main analysis.
+
+## Compression Quality Metrics
+
+Final answer accuracy is not enough. Each compressed representation should also
+be evaluated as an intermediate artifact.
+
+Track:
+
+- required evidence retention: how many `required_evidence` items are preserved
+  in the compressed history;
+- hard/soft constraint preservation: whether hard constraints, exclusions, and
+  soft preferences are kept distinct;
+- stale-state handling: whether outdated information is removed, marked stale,
+  or incorrectly preserved as current;
+- hallucinated fact count: whether the compressed history introduces facts not
+  present in the original dialogue;
+- answerability after compression: whether the compressed history still contains
+  enough information to identify the gold answer.
+
+If a compressed variant lacks the evidence needed to answer the question, the
+result should be labeled `insufficient_context_for_answer` rather than treated
+as a pure reasoning failure.
 
 ## Diagnostic Phenomena
 
@@ -228,7 +263,9 @@ small, freeze config, then scale.
 
 6. Supplementary checks
    - Optional 10-sample budget sweep: 300 / 600 / 900 tokens.
-   - Optional LLM-generated summary condition.
+   - Optional `sliding_window` naive baseline.
+   - Optional `oracle_dialogue_summary` redundancy check.
+   - Optional `llm_progressive_summary` condition.
    - Optional LLM-paraphrased or more natural histories.
    - Optional larger thinking budget sanity check.
 
@@ -239,6 +276,7 @@ Each run should save:
 - config snapshot;
 - generated structured samples;
 - rendered history variants;
+- compressed artifact quality annotations;
 - raw generations;
 - parsed generations;
 - scoring output;

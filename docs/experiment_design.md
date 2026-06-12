@@ -8,9 +8,10 @@ thinking budget.
 
 ## Main Hypothesis
 
-Under the same compressed-history budget, task-state-oriented compression should
-better preserve reasoning-relevant facts, updates, constraints, exclusions, and
-temporal relations than recency-only or dialogue-style compression.
+Under the same compressed-history budget, task-state-oriented or well-formed
+hybrid compression should preserve answer-critical evidence and constraint
+structure better than generic one-shot LLM summaries, while naive recency-only
+retention can fail through trivial evidence deletion.
 
 ## Variables
 
@@ -21,10 +22,16 @@ Independent variable:
 Main conditions:
 
 - `full_history`
-- `sliding_window`
 - `user_only_history`
-- `oracle_dialogue_summary`
 - `oracle_fact_state_summary`
+- `llm_generated_summary`
+- `hybrid_summary_recent`
+
+Supplementary / diagnostic conditions:
+
+- `sliding_window`
+- `oracle_dialogue_summary`
+- `llm_progressive_summary`
 
 Controlled constraints:
 
@@ -40,6 +47,11 @@ Dependent variables:
 
 - final-answer accuracy;
 - error type;
+- answerability after compression;
+- required evidence retention;
+- hard/soft constraint preservation;
+- stale-state handling;
+- hallucinated fact count;
 - input token count;
 - compressed-history token count;
 - compression ratio;
@@ -118,24 +130,10 @@ Minimum fields:
 Render every dialogue turn in order. This is the uncompressed upper bound and is
 not restricted by the compressed-history budget.
 
-### Sliding Window
-
-Starting from the latest complete turn, include as many complete dialogue turns
-as fit within the compressed-history budget. Do not truncate individual
-messages.
-
 ### User-only History
 
-Render only user messages. Starting from the latest user message, include as
-many complete user messages as fit within the compressed-history budget. Do not
-truncate individual messages.
-
-### Oracle Dialogue Summary
-
-Generate a natural-language summary from structured state and event fields. It
-should preserve relevant facts, updates, exclusions, hard constraints, soft
-preferences, and temporal relations. It should not include the final answer or
-solve the target question.
+Render only user messages under the compressed-history budget. This condition
+tests whether assistant responses mainly add useful state or redundant cost.
 
 ### Oracle Fact-State Summary
 
@@ -148,6 +146,47 @@ It also must not silently solve the final question. In particular, it must not
 say which option is the only valid one, rank A/B/C/D by final validity, eliminate
 all wrong options, or state a conclusion that requires answering the target
 question.
+
+### LLM-generated Summary
+
+Ask an LLM to compress the full dialogue history into a summary within the
+compressed-history budget. The compression prompt should request preservation of
+facts, updates, constraints, exclusions, soft preferences, and candidate
+attributes, but it must forbid solving the final question.
+
+This condition represents a practical generic agent compression strategy. Its
+quality should be evaluated through evidence retention, hallucination,
+constraint preservation, stale-state handling, and downstream QA accuracy.
+
+### Hybrid Summary + Recent Turns
+
+Summarize older dialogue history with an LLM and keep the most recent 1-2 turns
+verbatim, within the compressed-history budget. This represents the common
+pattern of compressed long-term context plus raw recent context.
+
+### Sliding Window
+
+Supplementary naive baseline only.
+
+Starting from the latest complete turn, include as many complete dialogue turns
+as fit within the compressed-history budget. Do not truncate individual
+messages.
+
+### Oracle Dialogue Summary
+
+Supplementary diagnostic oracle only.
+
+Generate a natural-language summary from structured state and event fields. It
+should preserve relevant facts, updates, exclusions, hard constraints, soft
+preferences, and temporal relations. It should not include the final answer or
+solve the target question.
+
+### Progressive LLM Summary
+
+Optional supplementary condition. Compress history incrementally during the
+dialogue, for example after turn 3 and again after turn 6. This tests cumulative
+summary error, but should not enter the main experiment until the one-shot and
+hybrid conditions are stable.
 
 ## Prompt
 
@@ -193,6 +232,12 @@ Automatic:
 - parse final answer after `Final Answer:`;
 - score against gold option;
 - attribute errors through `option_diagnostics`;
+- label `insufficient_context_for_answer` when a compressed artifact lacks
+  required evidence for the gold answer;
+- compute required evidence retention for each compressed artifact;
+- check hard/soft constraint preservation;
+- check stale-state handling;
+- count hallucinated facts if the summary introduces unsupported content;
 - compute token counts and compression ratios;
 - compute output lengths.
 
@@ -232,5 +277,7 @@ Manual audit:
 
 4. Supplementary
    - optional 10-sample 300/600/900 budget sweep;
-   - optional LLM-generated summary;
+   - optional sliding-window naive baseline;
+   - optional oracle dialogue summary redundancy check;
+   - optional progressive LLM summary;
    - optional LLM paraphrase / naturalness check.

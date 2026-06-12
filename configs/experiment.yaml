@@ -82,12 +82,22 @@ pilot_acceptance:
 conditions:
   main:
     - full_history
-    - sliding_window
     - user_only_history
-    - oracle_dialogue_summary
     - oracle_fact_state_summary
-  supplementary:
     - llm_generated_summary
+    - hybrid_summary_recent
+  supplementary:
+    - sliding_window
+    - oracle_dialogue_summary
+    - llm_progressive_summary
+
+compression_quality:
+  required_evidence_retention: true
+  answerability_labeling: true
+  hard_soft_constraint_preservation: true
+  stale_state_handling: true
+  hallucination_check: true
+  insufficient_context_label: "insufficient_context_for_answer"
 
 model:
   provider: "vllm_openai_compatible"

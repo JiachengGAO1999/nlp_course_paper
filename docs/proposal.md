@@ -59,13 +59,17 @@
 主实验比较五个条件：
 
 1. Full History；
-2. Sliding Window；
-3. User-only History；
-4. Oracle Dialogue Summary；
-5. Oracle Fact-State Summary。
+2. User-only History；
+3. Oracle Fact-State Summary；
+4. LLM-generated Summary；
+5. Hybrid Summary + Recent Turns。
 
 除 Full History 作为无压缩质量/成本上界外，其余条件均控制在相近
 compressed-history budget 下，计划约为 600 tokens，允许 500-800 tokens。
+
+其中 `Sliding Window` 降级为 supplementary naive baseline，仅用于展示纯
+recency deletion 的下界；`Oracle Dialogue Summary` 可在 pilot 中作为冗余
+检查，如果它和 `Oracle Fact-State Summary` 高度重合，则不进入正式主分析。
 
 ## 模型与推理设置
 
@@ -98,6 +102,11 @@ Prompt 要求 brief evidence-based explanation，但不要求 step-by-step reaso
 - output reasoning tokens / content tokens；
 - parse success rate；
 - error type distribution from `option_diagnostics`；
+- required evidence retention；
+- answerability after compression；
+- hard/soft constraint preservation；
+- stale-state handling；
+- hallucinated fact count；
 - phenomenon-wise performance；
 - accuracy-cost trade-off。
 
@@ -106,15 +115,17 @@ Prompt 要求 brief evidence-based explanation，但不要求 step-by-step reaso
 课程论文层面的贡献包括：
 
 1. 构造一个小规模、可复现、可诊断的 synthetic testbed；
-2. 在 budget-aware setting 下系统比较多种历史压缩策略；
-3. 分析压缩策略导致的错误类型，而不只报告 accuracy；
+2. 在 budget-aware setting 下比较规则状态压缩、LLM 摘要压缩和
+   hybrid summary + recent turns 等策略；
+3. 分析压缩产物的中间质量，包括关键证据保留、hard/soft constraint
+   区分、stale state 处理和 hallucination，而不只报告 accuracy；
 4. 为后续博士研究中的 multi-turn reasoning reliability 和 inference-time
    context/state control 提供一个可控实验原型。
 
 ## 局限性
 
 - 数据为 synthetic diagnostic testbed，不代表真实多轮对话分布；
-- Oracle summaries 是理想化压缩，不能直接等同于真实自动摘要；
+- Oracle Fact-State Summary 是理想化规则压缩上界，不能直接等同于真实自动摘要；
 - 主实验规模较小，主要用于课程论文和诊断性分析；
-- 后续需要通过 LLM-generated summaries、真实/半真实历史、更多模型和预算
-  档位检验外部有效性。
+- 后续需要通过真实/半真实历史、更多模型、progressive summary、retrieval
+  memory 和预算档位检验外部有效性。

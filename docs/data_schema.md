@@ -22,6 +22,7 @@ all rendered history variants.
   "required_evidence": [],
   "distractors": [],
   "option_diagnostics": {},
+  "compression_quality": {},
   "reasoning_requirement": "",
   "compression_variants": {}
 }
@@ -176,6 +177,22 @@ Recommended `error_type` values:
     "history_tokens": 650,
     "budget_constrained": true
   },
+  "llm_generated_summary": {
+    "text": "...",
+    "history_tokens": 610,
+    "budget_constrained": true,
+    "summarizer_model": "qwen3-8b-budget",
+    "compression_quality": {}
+  },
+  "hybrid_summary_recent": {
+    "text": "...",
+    "history_tokens": 630,
+    "budget_constrained": true,
+    "summarizer_model": "qwen3-8b-budget",
+    "summary_scope": "older_history",
+    "recent_turns_kept": ["turn_6", "turn_7"],
+    "compression_quality": {}
+  },
   "oracle_fact_state_summary": {
     "text": "...",
     "history_tokens": 530,
@@ -184,6 +201,43 @@ Recommended `error_type` values:
   }
 }
 ```
+
+## Compression Quality
+
+Each compressed artifact should have quality annotations or automatically
+computed checks.
+
+```json
+{
+  "required_evidence_retention": {
+    "retained": ["ev_latest_date", "ev_availability"],
+    "missing": ["ev_no_evening"],
+    "retention_rate": 0.67
+  },
+  "answerability": {
+    "answerable": false,
+    "label": "insufficient_context_for_answer",
+    "reason": "candidate attributes needed for the gold answer are missing"
+  },
+  "constraint_preservation": {
+    "hard_constraints_preserved": true,
+    "soft_preferences_preserved_as_soft": true,
+    "exclusions_preserved": false
+  },
+  "stale_state_handling": {
+    "stale_information_marked": true,
+    "stale_information_promoted_to_current": false
+  },
+  "hallucination_check": {
+    "unsupported_facts": [],
+    "hallucinated_fact_count": 0
+  }
+}
+```
+
+These fields are especially important for `llm_generated_summary` and
+`hybrid_summary_recent`, because their downstream errors should be connected to
+compression artifacts rather than treated only as answer-model failures.
 
 ## Fact-State Summary Format
 
