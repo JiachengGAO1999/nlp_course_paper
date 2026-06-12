@@ -1,0 +1,122 @@
+experiment:
+  name: "budget_aware_history_compression_course_paper"
+  run_id: "smoke_qwen3_8b_budget_history_compression"
+  language: "en"
+  paper_language: "zh"
+  dataset_kind: "controlled_synthetic_diagnostic_testbed"
+  random_seed: 42
+
+data:
+  formal_num_samples: 40
+  smoke_num_samples: 4
+  pilot_num_samples: 12
+  phenomena:
+    - scattered_fact_integration
+    - state_update
+    - negation_exclusion
+    - temporal_order
+  samples_per_phenomenon_formal: 10
+  history_turns:
+    min: 6
+    max: 8
+  full_history_target_tokens:
+    min: 1500
+    max: 2500
+  required_evidence_per_sample:
+    min: 2
+    max: 4
+  required_evidence_positions:
+    - early
+    - middle
+    - late
+    - cross_turn
+  require_position_diversity: true
+  require_surface_diversity: true
+  surface_diversity_dimensions:
+    - names
+    - dates
+    - option_order
+    - evidence_positions
+    - assistant_confirmation_styles
+    - constraint_wording
+    - distractor_placement
+  distractors_per_sample:
+    min: 2
+    max: 4
+  distractor_types:
+    - topical_distractor
+    - stale_information
+    - assistant_redundancy
+    - near_miss_constraint
+    - soft_preference
+  answer_format: "multiple_choice"
+  option_count:
+    min: 3
+    max: 4
+
+budgets:
+  compressed_history_budget_tokens: 600
+  compressed_history_budget_tolerance:
+    min: 500
+    max: 800
+  optional_budget_sweep_tokens:
+    - 300
+    - 600
+    - 900
+  thinking_token_budget: 512
+
+pilot_acceptance:
+  min_parse_rate: 0.95
+  compressed_history_token_range:
+    min: 500
+    max: 800
+  full_history_average_token_range:
+    min: 1500
+    max: 2500
+  require_all_phenomena: true
+  require_no_fact_state_leakage: true
+  require_no_ambiguous_gold: true
+  require_option_diagnostics: true
+  require_reasoning_content_logging: true
+
+conditions:
+  main:
+    - full_history
+    - sliding_window
+    - user_only_history
+    - oracle_dialogue_summary
+    - oracle_fact_state_summary
+  supplementary:
+    - llm_generated_summary
+
+model:
+  provider: "vllm_openai_compatible"
+  base_url: "http://localhost:8003/v1"
+  model: "qwen3-8b-budget"
+  model_revision: null
+  server_version: "vllm 0.19.1; torch 2.10.0+cu128; reasoning_parser=qwen3; thinking_token_budget=512"
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 2048
+  timeout_seconds: 1800
+  extra_body:
+    chat_template_kwargs:
+      enable_thinking: true
+    thinking_token_budget: 512
+
+prompt:
+  final_answer_marker: "Final Answer:"
+  template: |
+    You will answer a multiple-choice question based on the provided dialogue context.
+
+    Choose the best option. Provide the final answer in the exact format:
+    Final Answer: <A/B/C/D>
+
+    Then give a brief explanation mentioning the key evidence from the context.
+
+paths:
+  data_dir: "data"
+  runs_dir: "runs"
+  smoke_samples: "data/smoke_samples.jsonl"
+  pilot_samples: "data/pilot_samples.jsonl"
+  formal_samples: "data/formal_samples.jsonl"

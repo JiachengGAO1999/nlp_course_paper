@@ -1,0 +1,26 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Generated data and run artifacts
+data/*.jsonl
+data/*.csv
+data/*.json
+runs/
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
