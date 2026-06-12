@@ -9,9 +9,7 @@ venv/
 env/
 
 # Generated data and run artifacts
-data/*.jsonl
-data/*.csv
-data/*.json
+data/
 runs/
 
 # Logs and temporary files

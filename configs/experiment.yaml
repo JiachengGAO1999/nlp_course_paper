@@ -28,9 +28,45 @@ data:
     - soft_preference
     - near_miss_constraint
   answer_format: "multiple_choice"
-  option_count:
-    min: 3
-    max: 4
+  option_count: 4
+
+layer1:
+  benchmark: "MuSiQue-Ans"
+  source_repo: "bdsaglam/musique"
+  source_file: "musique_ans_v1.0_dev.jsonl"
+  excluded_source_ids:
+    # Entity bridge mismatch in the original MuSiQue chain:
+    # Atlanta, Georgia is followed by evidence about Atlanta, Michigan.
+    - "4hop1__93661_59747_211319_557671"
+    # Gold answer is a type label rather than a concrete answer option.
+    - "2hop__32887_578772"
+  candidate_pool_size: 60
+  hop_allocation:
+    2: 12
+    3: 30
+    4: 18
+  split_hop_allocation:
+    smoke:
+      2: 1
+      3: 2
+      4: 1
+    pilot:
+      2: 2
+      3: 6
+      4: 4
+    formal:
+      2: 8
+      3: 20
+      4: 12
+    spares:
+      2: 1
+      3: 2
+      4: 1
+  evidence_position_profiles:
+    - far_early
+    - far_middle
+    - cross_turn
+    - late
 
 budgets:
   compressed_history_budget_tokens: 600
@@ -121,6 +157,15 @@ prompt:
 paths:
   data_dir: "data"
   runs_dir: "runs"
-  smoke_samples: "data/smoke_samples.jsonl"
-  pilot_samples: "data/pilot_samples.jsonl"
-  formal_samples: "data/formal_samples.jsonl"
+  raw_musique_ans: "data/raw/musique_ans_v1.0_dev.jsonl"
+  layer1_dir: "data/layer1"
+  layer1_candidates: "data/layer1/splits/candidates.jsonl"
+  layer1_spares: "data/layer1/splits/spares.jsonl"
+  layer1_audit: "data/layer1/audits/musique_sampling_audit.json"
+  layer1_preview: "data/layer1/previews/musique_sampling_preview.md"
+  smoke_samples: "data/layer1/splits/smoke.jsonl"
+  pilot_samples: "data/layer1/splits/pilot.jsonl"
+  formal_samples: "data/layer1/splits/formal.jsonl"
+  mc_dir: "data/layer1/mc"
+  audit_dir: "data/layer1/audits"
+  preview_dir: "data/layer1/previews"
