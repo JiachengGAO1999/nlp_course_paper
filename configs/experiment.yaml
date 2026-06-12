@@ -1,22 +1,15 @@
 experiment:
-  name: "budget_aware_history_compression_course_paper"
-  run_id: "smoke_qwen3_8b_budget_history_compression"
+  name: "compression_architecture_multi_turn_reasoning_qa"
+  run_id: "compression_architecture_qwen3_8b"
   language: "en"
   paper_language: "zh"
-  dataset_kind: "controlled_synthetic_diagnostic_testbed"
+  data_source: "benchmark_qa_with_llm_generated_dialogue"
   random_seed: 42
 
 data:
   formal_num_samples: 40
   smoke_num_samples: 4
-  hard_smoke_num_samples: 6
   pilot_num_samples: 12
-  phenomena:
-    - scattered_fact_integration
-    - state_update
-    - negation_exclusion
-    - temporal_order
-  samples_per_phenomenon_formal: 10
   history_turns:
     min: 6
     max: 8
@@ -26,56 +19,18 @@ data:
   required_evidence_per_sample:
     min: 2
     max: 4
-  required_evidence_positions:
-    - early
-    - middle
-    - late
-    - cross_turn
-  require_position_diversity: true
-  require_surface_diversity: true
-  surface_diversity_dimensions:
-    - names
-    - dates
-    - option_order
-    - evidence_positions
-    - assistant_confirmation_styles
-    - constraint_wording
-    - distractor_placement
   distractors_per_sample:
     min: 2
     max: 4
   distractor_types:
     - topical_distractor
     - stale_information
-    - assistant_redundancy
-    - near_miss_constraint
     - soft_preference
+    - near_miss_constraint
   answer_format: "multiple_choice"
   option_count:
     min: 3
     max: 4
-  difficulty_modes:
-    - implicit_constraint_tracking
-    - derived_constraint
-    - long_distance_evidence
-    - soft_hard_conflict_without_labels
-    - subtle_state_update
-    - scattered_candidate_attributes
-
-difficulty_calibration:
-  hard_smoke_v2_conditions:
-    - full_history
-    - oracle_fact_state_summary
-    - llm_generated_summary
-    - hybrid_summary_recent
-  full_history_correct_discrete_targets:
-    # 6-sample scale — only possible values are 0/6 .. 6/6
-    ideal: 5
-    hard_subset_acceptable: 4
-    ceiling_risk: 6
-    too_hard: 3
-  if_6_of_6_with_no_condition_differentiation: "increase_generator_difficulty_before_pilot"
-  if_3_or_below: "simplify_or_isolate_as_supplementary_hard_subset"
 
 budgets:
   compressed_history_budget_tokens: 600
@@ -88,6 +43,20 @@ budgets:
     - 900
   thinking_token_budget: 512
 
+conditions:
+  main:
+    - full_history
+    - one_shot_summary
+    - hybrid_summary_recent
+
+compression:
+  paradigm: "prompt_based_self_compression"
+  prompt_template: "docs/experiment_design.md"
+  hybrid_budget:
+    summary_max_tokens: 400
+    recent_turn_max_tokens: 200
+    recent_turn_overflow_threshold: 250
+
 pilot_acceptance:
   min_parse_rate: 0.95
   compressed_history_token_range:
@@ -96,28 +65,14 @@ pilot_acceptance:
   full_history_average_token_range:
     min: 1500
     max: 2500
-  require_all_phenomena: true
   require_no_fact_state_leakage: true
   require_no_ambiguous_gold: true
-  require_option_diagnostics: true
   require_reasoning_content_logging: true
-
-conditions:
-  main:
-    - full_history
-    - user_only_history
-    - oracle_fact_state_summary
-    - llm_generated_summary
-    - hybrid_summary_recent
-  supplementary:
-    - sliding_window
-    - oracle_dialogue_summary
-    - llm_progressive_summary
 
 compression_quality:
   required_evidence_retention: true
   answerability_labeling: true
-  hard_soft_constraint_preservation: true
+  constraint_preservation: true
   stale_state_handling: true
   hallucination_check: true
   insufficient_context_label: "insufficient_context_for_answer"
@@ -150,13 +105,12 @@ summarizer:
   summary_output_counts_toward_compressed_history_budget: true
 
 audit:
-  hard_smoke_v2_llm_compression_full_manual_audit: true
-  hard_smoke_v2_llm_artifacts_to_audit: 12
-  span_matching_is_pre_audit_hint_only_for_llm_summaries: true
+  pilot_manual_audit_artifacts: 36
+  formal_manual_audit_ratio: 0.10
 
 prompt:
   final_answer_marker: "Final Answer:"
-  template: |
+  answer_template: |
     You will answer a multiple-choice question based on the provided dialogue context.
 
     Choose the best option. Provide the final answer in the exact format:
@@ -168,6 +122,5 @@ paths:
   data_dir: "data"
   runs_dir: "runs"
   smoke_samples: "data/smoke_samples.jsonl"
-  hard_smoke_samples: "data/hard_smoke_samples.jsonl"
   pilot_samples: "data/pilot_samples.jsonl"
   formal_samples: "data/formal_samples.jsonl"

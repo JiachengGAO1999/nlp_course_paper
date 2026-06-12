@@ -1,24 +1,49 @@
-# NLP Course Paper
+# Compression Architecture for Multi-Turn Reasoning QA
 
-This repository contains a small controlled experiment for an NLP course paper:
+Course paper project: How do different prompt-based self-compression architectures
+affect downstream multi-turn reasoning QA reliability?
 
-> Budget-aware dialogue history compression for multi-turn reasoning QA.
+## Quick Start
 
-The project studies how different compressed representations of prior dialogue
-history affect Qwen3-8B's later multiple-choice reasoning reliability under a
-fixed thinking budget.
+```bash
+# 1. Generate dialogues from benchmark QA items
+python scripts/01_generate_dialogues.py --config configs/experiment.yaml
 
-Start with [GUIDE.md](GUIDE.md). It records the project framing, fixed design
-decisions, experiment progression, and artifact policy.
+# 2. Build compression variants
+python scripts/02_build_compressions.py --config configs/experiment.yaml
 
-## Planned Layout
+# 3. Run inference
+python scripts/03_run_inference.py --config configs/experiment.yaml
 
-- `GUIDE.md`: operational guide and current project state.
-- `docs/proposal.md`: course-paper proposal in Chinese.
-- `docs/experiment_design.md`: experiment design and variables.
-- `docs/data_schema.md`: synthetic diagnostic testbed schema.
-- `configs/experiment.yaml`: first main experiment configuration.
-- `src/`: reusable code.
-- `scripts/`: command-line entry points.
-- `data/`: generated datasets and variants.
-- `runs/`: run outputs and analysis artifacts.
+# 4. Score and summarize
+python scripts/04_summarize_results.py
+```
+
+## Conditions
+
+| Condition | Architecture |
+|---|---|
+| `full_history` | No compression (upper bound) |
+| `one_shot_summary` | All turns → one compression call |
+| `hybrid_summary_recent` | Older turns compressed + recent turn verbatim |
+| `user_only_summary` | User messages only → compression call |
+
+All compressed conditions share the same compression prompt template.
+The independent variable is compression architecture, not prompt phrasing.
+
+## Project Structure
+
+```
+configs/          Experiment configuration
+data/             Generated data (not committed)
+docs/             Design documents
+runs/             Experiment outputs (not committed)
+scripts/          Pipeline scripts
+src/              Shared utilities
+```
+
+## Design Documents
+
+- [GUIDE.md](GUIDE.md) — full project guide, decisions, and status.
+- [docs/experiment_design.md](docs/experiment_design.md) — detailed experiment design.
+- [docs/data_schema.md](docs/data_schema.md) — data format specification.
