@@ -36,9 +36,17 @@ def distractor(distractor_id, turn_id, distractor_type, span, risk=None):
 
 def user_text(core, detail=None):
     tail = (
-        "This is part of a running planning conversation, so later turns may add "
-        "side details, revise earlier assumptions, or mention preferences that are "
-        "not equally important. Please keep the factual source of each item clear."
+        "This came from a planning chat rather than a clean checklist, so the note "
+        "keeps the original wording and a little surrounding context. The group also "
+        "talked about handoffs, convenience, documentation, and who would follow up "
+        "after the decision. Those side details make the conversation longer, but the "
+        "final decision should still be based only on the relevant facts that are "
+        "actually stated across the turns. I am also leaving in the casual phrasing "
+        "because these planning notes were collected over several messages, not "
+        "rewritten as a table. Some participants refer to earlier remarks obliquely, "
+        "so the order and source of the details still matter. The note is deliberately "
+        "not normalized yet, because the experiment is about what happens when a messy "
+        "multi-turn history later has to be compressed."
     )
     if detail:
         return f"{core} {detail} {tail}"
@@ -49,22 +57,44 @@ def assistant_text(behavior, content):
     templates = {
         "echo": (
             "Noted. I will keep this in the working context. {content} I am not "
-            "making the final decision yet; I am only recording the current state."
+            "making the final decision yet; I am only recording the current state. "
+            "I will also keep the wording close to the user's note because later turns "
+            "may refer back to it indirectly. For now, this is just one part of the "
+            "running history rather than a standalone recommendation. I am not trying "
+            "to compress the whole discussion yet; I am only acknowledging this local "
+            "piece of context and keeping it available for a later decision."
         ),
         "partial_summary": (
             "Got it. The main points I will carry forward are: {content} I may be "
             "leaving out some lower-level details here, so the full user turns remain "
-            "the source of truth."
+            "the source of truth. I am summarizing locally to keep the conversation "
+            "moving, not to replace every prior detail. If the decision later depends "
+            "on an omitted detail, the original user message should still be treated "
+            "as more authoritative than this short recap. This recap is intentionally "
+            "selective, like an assistant trying to keep a long planning thread readable."
         ),
         "incorrect_inference": (
             "So it sounds like {content} That seems plausible from the current notes, "
-            "although it may still depend on a condition mentioned elsewhere."
+            "although it may still depend on a condition mentioned elsewhere. I am "
+            "making this as a tentative reading, not as a final answer. If a later "
+            "turn adds a conflicting requirement or a missing premise, this inference "
+            "may need to be revised. I will leave the tentative reading in the history "
+            "because later compression methods may need to decide whether to preserve "
+            "it as useful context or discount it as an incomplete inference."
         ),
         "stale_reiteration": (
             "Just to confirm my notes, {content} I will keep this visible unless the "
-            "later turns make it clear that the state has changed."
+            "later turns make it clear that the state has changed. This kind of recap "
+            "can be useful for continuity, but it may also carry forward an old state "
+            "if the conversation has moved on. I am leaving it as a visible recap "
+            "rather than silently correcting it, so a later reader has to resolve the "
+            "timeline from the surrounding turns."
         ),
-        "neutral": "Noted. I have updated the working notes.",
+        "neutral": (
+            "Noted. I have updated the working notes. I will avoid adding a new "
+            "recommendation here and simply keep the conversation moving. This response "
+            "is short, but it still occupies a turn in the dialogue history."
+        ),
     }
     return templates[behavior].format(content=content)
 
