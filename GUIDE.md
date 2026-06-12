@@ -172,6 +172,64 @@ Phenomena:
 4. `temporal_order`
    - Correct reasoning depends on latest state, event order, or dependency order.
 
+## Benchmark-Inspired Difficulty Design
+
+The synthetic generator should remain controlled, but its difficulty should not
+be invented from scratch. It should borrow failure modes observed in multi-turn
+and long-context evaluation work, without directly importing those benchmarks as
+the main dataset.
+
+Use benchmark-inspired patterns as design motifs, not as unverified numerical
+claims. Do not cite specific benchmark scores in the course paper unless the
+original source has been checked.
+
+Difficulty modes to inject:
+
+- `implicit_constraint_tracking`
+  - Introduce an early constraint once, then stop repeating it.
+  - Tests whether compression preserves constraints that are no longer locally
+    salient.
+
+- `derived_constraint`
+  - Make a required constraint usable only after one or two inference steps.
+  - Example: "Ben's lab duty ends at noon" plus "Friday afternoon is 2-5 PM"
+    implies Friday afternoon satisfies Ben's availability.
+
+- `long_distance_evidence`
+  - Place answer-critical evidence far from the final question, with redundant
+    assistant confirmations or topical context in between.
+  - Use multiple distance profiles rather than always placing all evidence at
+    the beginning.
+
+- `soft_hard_conflict_without_labels`
+  - Avoid explicitly labeling every item as "hard" or "soft".
+  - Let the wording imply priority, so summaries can misclassify preferences as
+    constraints or constraints as preferences.
+
+- `subtle_state_update`
+  - Replace or revise an earlier state using natural wording rather than
+    explicit "this replaces the old value" phrasing every time.
+
+- `scattered_candidate_attributes`
+  - Distribute candidate attributes across turns so the final answer requires
+    assembling entity-level state, not matching a single sentence.
+
+The goal is not to make Full History fail catastrophically. A healthy hard
+subset should be challenging enough to avoid ceiling effects while preserving a
+meaningful uncompressed upper bound.
+
+Target difficulty for hard smoke v2:
+
+- `full_history`: roughly 85-95% accuracy is ideal; 70-80% is acceptable for a
+  deliberately hard subset but may be too difficult for the main formal set;
+- `oracle_fact_state_summary`: should be close to Full History if compression is
+  faithful;
+- `llm_generated_summary` and `hybrid_summary_recent`: should reveal whether
+  practical compression loses or distorts answer-critical state;
+- if Full History remains near 100%, increase generator difficulty before pilot;
+- if Full History falls far below 70%, separate those samples into a hard subset
+  rather than using them as the main formal distribution.
+
 ## Diagnostic Distractors
 
 Distractors should be generated and labeled. They should increase context
@@ -248,20 +306,27 @@ small, freeze config, then scale.
    - Check answer prompt and parser.
    - Check Qwen3 reasoning/content logging.
 
-4. Pilot / preflight
+4. Hard smoke v2
+   - Generate about 6 benchmark-inspired hard samples.
+   - Include the difficulty modes above.
+   - First run only `full_history`, `oracle_fact_state_summary`,
+     `llm_generated_summary`, and `hybrid_summary_recent`.
+   - Use this step to calibrate difficulty before expanding pilot.
+
+5. Pilot / preflight
    - Generate 8-12 samples.
    - Include all 4 phenomena.
    - Run all 5 main conditions.
    - Inspect accuracy, token counts, parse rate, and error attribution.
    - Enter formal only if the pilot acceptance criteria below are met.
 
-5. Formal run
+6. Formal run
    - Freeze seed, config, prompt, generator, scoring, and analysis scripts.
    - Generate 40 formal samples.
    - Run 40 samples x 5 conditions.
    - Save config snapshot and all artifacts under a fresh run directory.
 
-6. Supplementary checks
+7. Supplementary checks
    - Optional 10-sample budget sweep: 300 / 600 / 900 tokens.
    - Optional `sliding_window` naive baseline.
    - Optional `oracle_dialogue_summary` redundancy check.
@@ -334,6 +399,7 @@ Rules:
 The project may move from pilot to formal only if:
 
 - final-answer parse rate is at least 95%;
+- hard smoke v2 has been inspected and does not show a severe ceiling effect;
 - compressed variants are mostly within 500-800 history tokens;
 - Full History averages within the 1,500-2,500 token target range;
 - no inspected Fact-State Summary leaks the final answer or performs final
@@ -371,8 +437,8 @@ Forbidden:
 
 ## Next Steps
 
-1. Implement the rule-based synthetic diagnostic generator.
-2. Generate 2-4 smoke samples.
-3. Implement variant builder and token counting.
-4. Implement parser/scorer for `Final Answer: <A/B/C/D>`.
-5. Run local smoke checks before any formal GPU inference.
+1. Implement hard smoke v2 samples with benchmark-inspired difficulty modes.
+2. Add `llm_generated_summary` and `hybrid_summary_recent` generation.
+3. Add compression-quality checks for evidence retention and answerability.
+4. Run hard smoke v2 before expanding to pilot.
+5. Only then build the 8-12 sample pilot set.

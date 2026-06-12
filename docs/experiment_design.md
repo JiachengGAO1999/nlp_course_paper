@@ -97,6 +97,32 @@ names, dates, option order, evidence positions, assistant confirmation styles,
 constraint wording, and distractor placement. Each domain or phenomenon should
 use multiple surface templates where possible.
 
+## Benchmark-Inspired Difficulty Modes
+
+The formal generator should borrow difficulty patterns from prior multi-turn and
+long-context evaluation work without directly depending on an external benchmark
+as the main dataset. This keeps the experiment controllable while reducing the
+risk that the synthetic testbed becomes a shallow template task.
+
+Difficulty modes:
+
+- `implicit_constraint_tracking`: introduce an early constraint once and do not
+  repeat it later;
+- `derived_constraint`: require one or two inference steps before a fact can be
+  used as a constraint;
+- `long_distance_evidence`: separate answer-critical evidence from the target
+  question with intervening redundant or topical context;
+- `soft_hard_conflict_without_labels`: express hard constraints and soft
+  preferences in similar natural wording so compression can misclassify them;
+- `subtle_state_update`: update earlier state without always using explicit
+  replacement language;
+- `scattered_candidate_attributes`: distribute attributes for each candidate
+  across turns so answering requires assembling entity-level state.
+
+Do not optimize the generator merely to make the answer model fail. Full History
+should remain a meaningful upper bound. Hard samples should be used first for
+calibration before they enter the formal distribution.
+
 ## Diagnostic Options
 
 Each sample uses 3-4 answer options. Incorrect options should be near-miss
@@ -257,7 +283,22 @@ Manual audit:
    - local generation and validation;
    - optional tiny vLLM inference.
 
-2. Pilot
+2. Hard Smoke v2
+   - 6 benchmark-inspired hard samples;
+   - include the difficulty modes above;
+   - run `full_history`, `oracle_fact_state_summary`, `llm_generated_summary`,
+     and `hybrid_summary_recent` first;
+   - inspect whether Full History is too easy or too hard.
+
+   Difficulty interpretation:
+   - Full History near 100%: likely ceiling effect; increase difficulty before pilot.
+   - Full History around 85-95%: healthy for main pilot.
+   - Full History around 70-80%: acceptable for a hard subset, but maybe too hard
+     for the formal main distribution.
+   - Full History far below 70%: task difficulty is confounded with compression
+     effects; simplify or isolate as supplementary hard cases.
+
+3. Pilot
    - 8-12 samples;
    - all 4 phenomena;
    - inspect parse rate, budget fit, accuracy range, and error attribution.
@@ -270,12 +311,12 @@ Manual audit:
      - every phenomenon appears in the pilot;
      - Qwen3 reasoning/content logging works.
 
-3. Formal
+4. Formal
    - freeze seed/config/generator/prompt/parser/scorer;
    - 40 samples x 5 conditions;
    - save all artifacts to a fresh run directory.
 
-4. Supplementary
+5. Supplementary
    - optional 10-sample 300/600/900 budget sweep;
    - optional sliding-window naive baseline;
    - optional oracle dialogue summary redundancy check;

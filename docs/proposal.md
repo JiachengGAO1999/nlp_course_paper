@@ -54,6 +54,12 @@
 3. 否定与排除约束；
 4. 顺序 / 时间依赖。
 
+为了避免 synthetic 数据过于简单，生成器将借鉴现有多轮评测中常见的失败
+模式，但不直接把外部 benchmark 作为主数据集。具体包括：早期隐式约束保持、
+需要中间推理才能使用的约束、长距离证据、未显式标注的 hard/soft preference
+冲突、细微状态更新，以及分散候选属性整合。正式 pilot 前会先构造 hard smoke
+v2，用少量高难样本校准 Qwen3-8B thinking 模型是否存在 ceiling effect。
+
 ## 历史压缩条件
 
 主实验比较五个条件：
@@ -121,6 +127,19 @@ Prompt 要求 brief evidence-based explanation，但不要求 step-by-step reaso
    区分、stale state 处理和 hallucination，而不只报告 accuracy；
 4. 为后续博士研究中的 multi-turn reasoning reliability 和 inference-time
    context/state control 提供一个可控实验原型。
+
+## 实验推进
+
+本文不直接从简单 smoke 扩展到正式实验，而是采用：
+
+```text
+basic smoke -> hard smoke v2 -> pilot -> formal
+```
+
+其中 hard smoke v2 用于检查任务是否过于简单。如果 Full History 条件仍接近
+100% 正确率，则需要增加生成器难度；如果 Full History 明显低于合理上界，则
+说明任务本身过难，应将这类样本作为 supplementary hard subset，而不是主实验
+分布。
 
 ## 局限性
 

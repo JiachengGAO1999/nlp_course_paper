@@ -9,6 +9,7 @@ experiment:
 data:
   formal_num_samples: 40
   smoke_num_samples: 4
+  hard_smoke_num_samples: 6
   pilot_num_samples: 12
   phenomena:
     - scattered_fact_integration
@@ -53,6 +54,26 @@ data:
   option_count:
     min: 3
     max: 4
+  difficulty_modes:
+    - implicit_constraint_tracking
+    - derived_constraint
+    - long_distance_evidence
+    - soft_hard_conflict_without_labels
+    - subtle_state_update
+    - scattered_candidate_attributes
+
+difficulty_calibration:
+  hard_smoke_v2_conditions:
+    - full_history
+    - oracle_fact_state_summary
+    - llm_generated_summary
+    - hybrid_summary_recent
+  full_history_accuracy_targets:
+    ideal_min: 0.85
+    ideal_max: 0.95
+    hard_subset_min: 0.70
+  if_full_history_near_ceiling: "increase_generator_difficulty_before_pilot"
+  if_full_history_below_hard_subset_min: "simplify_or_isolate_as_supplementary_hard_subset"
 
 budgets:
   compressed_history_budget_tokens: 600
