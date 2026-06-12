@@ -75,6 +75,7 @@ def main():
                 "parsed_answer": parsed_answer,
                 "is_correct": parsed_answer == row["gold_answer"],
                 "error_type": None if parsed_answer == row["gold_answer"] else (diagnostics or {}).get("error_type"),
+                "assistant_inference_error_present": row.get("assistant_inference_error_present", False),
                 "response_reasoning": message.get("reasoning"),
                 "response_content": content,
                 "finish_reason": choice.get("finish_reason"),
