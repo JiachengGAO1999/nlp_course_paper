@@ -257,6 +257,32 @@ Do not mix:
 If the dataset or generator is changed after a pilot, create a new dataset/run
 version instead of silently editing old artifacts.
 
+## Remote Command Protocol
+
+When running commands from Windows PowerShell against the remote Linux server,
+avoid complex inline `ssh` commands. In particular, avoid nested quotes, `$()`,
+long pipelines, redirections, and `bash -lc` one-liners unless the command is
+trivially simple. Windows PowerShell, local sandbox wrappers, and remote bash
+quoting interact poorly and can produce misleading failures.
+
+For recurring remote tasks, prefer stable helper scripts under `~/bin`, such as
+GPU/process inspection utilities. Keep these helpers small and project-agnostic
+when possible.
+
+For one-off remote tasks, create a uniquely named temporary script under `/tmp`,
+execute it, and remove it immediately after execution. Use a cleanup trap inside
+the script when practical.
+
+Rules:
+
+- do not leave temporary diagnostic scripts in the project directory;
+- do not leave one-off scripts in `$HOME` unless explicitly requested;
+- put reusable remote helpers in `~/bin`;
+- put formal experiment outputs under the project `runs/` directory;
+- keep `/tmp` scripts short-lived and self-cleaning;
+- prefer script upload + simple `ssh` execution over fragile inline remote
+  shell programs.
+
 ## Pilot Acceptance Criteria
 
 The project may move from pilot to formal only if:
