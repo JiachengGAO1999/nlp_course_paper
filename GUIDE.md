@@ -265,19 +265,27 @@ long pipelines, redirections, and `bash -lc` one-liners unless the command is
 trivially simple. Windows PowerShell, local sandbox wrappers, and remote bash
 quoting interact poorly and can produce misleading failures.
 
-For recurring remote tasks, prefer stable helper scripts under `~/bin`, such as
-GPU/process inspection utilities. Keep these helpers small and project-agnostic
-when possible.
+Use three levels of remote scripts:
 
-For one-off remote tasks, create a uniquely named temporary script under `/tmp`,
-execute it, and remove it immediately after execution. Use a cleanup trap inside
-the script when practical.
+1. One-off diagnostic or maintenance scripts should not enter git. Create a
+   uniquely named temporary script under `/tmp`, execute it, and remove it
+   immediately after execution. Use a cleanup trap inside the script when
+   practical.
+
+2. Personal recurring server helpers should not enter this project by default.
+   Put them under `~/bin`, for example GPU/process inspection helpers. Keep
+   them small and project-agnostic when possible.
+
+3. Project remote scripts should enter git only when they are stable,
+   repeatedly used, and necessary for reproducing the project workflow. Avoid
+   committing one-off server maintenance scripts.
 
 Rules:
 
 - do not leave temporary diagnostic scripts in the project directory;
 - do not leave one-off scripts in `$HOME` unless explicitly requested;
 - put reusable remote helpers in `~/bin`;
+- put only stable project-specific remote entry points in `scripts/remote/`;
 - put formal experiment outputs under the project `runs/` directory;
 - keep `/tmp` scripts short-lived and self-cleaning;
 - prefer script upload + simple `ssh` execution over fragile inline remote
