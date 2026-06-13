@@ -29,7 +29,9 @@ Compressed history (under {target_tokens} tokens):
 """
 
 
-def condition_names(config):
+def condition_names(config, args=None):
+    if args is not None and getattr(args, "conditions", None):
+        return [name.strip() for name in args.conditions.split(",") if name.strip()]
     return list(config["conditions"]["main"])
 
 
@@ -159,7 +161,7 @@ def build_variants_for_row(row, config, args):
         "one_shot_summary": lambda: one_shot_variant(row, config, args),
         "hybrid_summary_recent": lambda: hybrid_variant(row, config, args),
     }
-    return [builders[name]() for name in condition_names(config)]
+    return [builders[name]() for name in condition_names(config, args)]
 
 
 def summarize_variants(rows):

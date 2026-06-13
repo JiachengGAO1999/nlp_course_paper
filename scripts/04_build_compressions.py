@@ -12,7 +12,8 @@ from src.io_utils import load_yaml
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/experiment.yaml")
-    parser.add_argument("--split", default="smoke", choices=["smoke", "pilot", "formal", "spares"])
+    parser.add_argument("--split", default="smoke", choices=["smoke", "pilot", "formal", "formal_pool", "spares"])
+    parser.add_argument("--conditions", default=None, help="Comma-separated subset, e.g. full_history")
     parser.add_argument("--input", default=None)
     parser.add_argument("--output", default=None)
     parser.add_argument("--output-dir", default=None)

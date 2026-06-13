@@ -245,6 +245,7 @@ def default_input_for_split(config, split):
         "smoke": config["paths"]["smoke_samples"],
         "pilot": config["paths"]["pilot_samples"],
         "formal": config["paths"]["formal_samples"],
+        "formal_pool": config["paths"].get("formal_pool_samples", str(data_dir / "layer1" / "splits" / "formal_pool.jsonl")),
         "spares": config["paths"].get("layer1_spares", str(data_dir / "layer1" / "splits" / "spares.jsonl")),
     }[split]
 

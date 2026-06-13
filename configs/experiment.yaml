@@ -43,10 +43,24 @@ layer1:
     # Gold answer is a type label rather than a concrete answer option.
     - "2hop__32887_578772"
   candidate_pool_size: 60
+  formal_pool_size: 80
   hop_allocation:
     2: 12
     3: 30
     4: 18
+  formal_pool_hop_allocation:
+    2: 16
+    3: 40
+    4: 24
+  formal_hop_allocation:
+    2: 8
+    3: 20
+    4: 12
+  formal_profile_allocation:
+    far_early: 10
+    far_middle: 10
+    cross_turn: 10
+    late: 10
   split_hop_allocation:
     smoke:
       2: 1
@@ -85,6 +99,11 @@ layer1:
       far_middle: 10
       cross_turn: 10
       late: 10
+    formal_pool:
+      far_early: 20
+      far_middle: 20
+      cross_turn: 20
+      late: 20
     spares:
       far_early: 1
       far_middle: 1
@@ -190,6 +209,7 @@ paths:
   smoke_samples: "data/layer1/splits/smoke.jsonl"
   pilot_samples: "data/layer1/splits/pilot.jsonl"
   formal_samples: "data/layer1/splits/formal.jsonl"
+  formal_pool_samples: "data/layer1/splits/formal_pool.jsonl"
   mc_dir: "data/layer1/mc"
   dialogue_dir: "data/layer1/dialogues"
   audit_dir: "data/layer1/audits"
