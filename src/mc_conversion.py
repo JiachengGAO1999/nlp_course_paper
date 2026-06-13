@@ -27,31 +27,6 @@ def evidence_text(item):
     return "\n\n".join(chunks)
 
 
-def gold_answer_paragraphs(item):
-    answer_terms = {normalize_text(item.get("answer"))}
-    answer_terms.update(normalize_text(alias) for alias in item.get("answer_aliases") or [])
-    answer_terms = {term for term in answer_terms if term}
-    paragraphs = []
-    for ev in item.get("required_evidence") or []:
-        text = normalize_text(ev.get("paragraph_text"))
-        if any(term in text for term in answer_terms):
-            paragraphs.append(ev)
-    return paragraphs
-
-
-def gold_paragraph_guidance(item):
-    paragraphs = gold_answer_paragraphs(item)
-    if not paragraphs:
-        return "No required evidence paragraph directly contains the gold answer string."
-    chunks = []
-    for ev in paragraphs:
-        chunks.append(
-            f"Step {ev.get('step')} / Title: {ev.get('title')}\n"
-            f"Paragraph containing the gold answer:\n{ev.get('paragraph_text')}"
-        )
-    return "\n\n".join(chunks)
-
-
 def build_prompt(item):
     aliases = item.get("answer_aliases") or []
     return f"""You are creating multiple-choice distractors for a benchmark QA item.
@@ -64,9 +39,6 @@ Rules:
 - Distractors must have the same semantic type as the gold answer when possible.
 - Distractors should be plausible enough for a multiple-choice benchmark.
 - Distractors must NOT be supported by the evidence.
-- Avoid choosing distractors that are merely co-listed in the same required evidence
-  paragraph as the gold answer. At most one distractor may be an exact name/date/value
-  appearing in a paragraph that also contains the gold answer.
 - Do not solve the question for a test-taker. This is data construction.
 - Return only valid JSON. No markdown.
 
@@ -91,9 +63,6 @@ Gold answer aliases:
 
 Required evidence:
 {evidence_text(item)}
-
-Gold-answer paragraph check:
-{gold_paragraph_guidance(item)}
 """
 
 
@@ -194,18 +163,6 @@ def audit_mc_item(item):
             issues.append(f"distractor_{label}_matches_alias")
         if label != item.get("gold") and text and text in evidence:
             warnings.append(f"distractor_{label}_appears_in_required_evidence")
-
-    for ev in gold_answer_paragraphs(item):
-        paragraph = normalize_text(ev.get("paragraph_text"))
-        hits = [
-            label
-            for label, text in normalized_options.items()
-            if label != item.get("gold") and text and text in paragraph
-        ]
-        if len(hits) >= 2:
-            issues.append(
-                f"gold_paragraph_contains_multiple_distractors_step_{ev.get('step')}_labels_{','.join(hits)}"
-            )
     return issues, warnings
 
 
@@ -230,38 +187,6 @@ def convert_item(item, generated, seed):
         "warnings": warnings,
     }
     return converted
-
-
-def has_gold_paragraph_bottleneck(item):
-    return any(
-        issue.startswith("gold_paragraph_contains_multiple_distractors")
-        for issue in item.get("mc_audit", {}).get("issues", [])
-    )
-
-
-def generate_converted_item(row, config, args, seed):
-    last_converted = None
-    for semantic_attempt in range(1, args.retries + 1):
-        generated = generate_distractors(
-            row,
-            base_url=args.base_url or config["summarizer"]["base_url"],
-            model=args.model or config["summarizer"]["model"],
-            temperature=args.temperature,
-            max_tokens=args.max_tokens,
-            timeout_seconds=args.timeout_seconds,
-            retries=args.retries,
-        )
-        converted = convert_item(row, generated, seed)
-        converted["mc_semantic_attempts"] = semantic_attempt
-        last_converted = converted
-        if not has_gold_paragraph_bottleneck(converted):
-            return converted
-        print(
-            f"  retrying distractors: gold paragraph contains multiple distractors "
-            f"(semantic attempt {semantic_attempt}/{args.retries})",
-            flush=True,
-        )
-    return last_converted
 
 
 def write_preview(path, rows):
@@ -338,7 +263,16 @@ def convert_musique_to_mc(config, args):
     converted = []
     for idx, row in enumerate(rows, start=1):
         print(f"[{idx}/{len(rows)}] {row['source_id']}", flush=True)
-        converted.append(generate_converted_item(row, config, args, seed))
+        generated = generate_distractors(
+            row,
+            base_url=args.base_url or config["summarizer"]["base_url"],
+            model=args.model or config["summarizer"]["model"],
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+            timeout_seconds=args.timeout_seconds,
+            retries=args.retries,
+        )
+        converted.append(convert_item(row, generated, seed))
 
     audit_path = audit_dir / f"{args.split}_mc_audit.json"
     preview_path = preview_dir / f"{args.split}_mc_preview.md"
