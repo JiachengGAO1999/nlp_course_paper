@@ -15,6 +15,35 @@ def stable_profile(seed, source_id, profiles):
     return profiles[rng.randrange(len(profiles))]
 
 
+def expand_profile_allocation(allocation):
+    profiles = []
+    for profile, count in allocation.items():
+        profiles.extend([profile] * int(count))
+    return profiles
+
+
+def assign_profiles(rows, config, split, seed):
+    profiles = config.get("layer1", {}).get("evidence_position_profiles") or PROFILE_NAMES
+    split_allocations = config.get("layer1", {}).get("split_profile_allocation") or {}
+    allocation = split_allocations.get(split)
+    if not allocation:
+        return {row["source_id"]: stable_profile(seed, row["source_id"], profiles) for row in rows}
+
+    assigned = expand_profile_allocation(allocation)
+    if len(assigned) != len(rows):
+        raise ValueError(
+            f"Profile allocation for split '{split}' has {len(assigned)} items, "
+            f"but input contains {len(rows)} rows."
+        )
+    unknown = sorted(set(assigned) - set(profiles))
+    if unknown:
+        raise ValueError(f"Unknown profile(s) in split '{split}': {unknown}")
+
+    rng = stable_rng(seed, f"{split}:profile_allocation")
+    rng.shuffle(assigned)
+    return {row["source_id"]: profile for row, profile in zip(rows, assigned)}
+
+
 def words(text):
     return re.findall(r"\S+", str(text or "").strip())
 
@@ -51,10 +80,10 @@ def build_evidence_turn(ev, turn_id):
     return (
         f"I found another source entry while collecting background. "
         f"The entry titled \"{ev.get('title')}\" says: {snippet}\n\n"
-        f"For now, I am noting it for this subquestion: {ev.get('subquestion')} "
-        f"The source's short answer is: {ev.get('subanswer')}. "
-        f"Please think through what this entry seems to establish so far, while "
-        f"keeping any conclusion tentative until the rest of the material is available."
+        f"For now, I am keeping this as a potentially relevant source note. "
+        f"Please consider what it seems to establish and how it might connect to "
+        f"earlier notes, but keep any conclusion tentative until the rest of the "
+        f"material is available."
     )
 
 
@@ -110,6 +139,11 @@ def build_user_turns(item, profile, total_turns):
     return turns, {str(ev["step"]): turn for turn, ev in zip(ev_positions, evidence)}
 
 
+def critical_evidence_in_recent_turn(evidence_turn_map, total_turns, recent_turns):
+    first_recent_turn = total_turns - recent_turns + 1
+    return any(int(turn) >= first_recent_turn for turn in evidence_turn_map.values())
+
+
 def assistant_messages(history):
     system = (
         "You are a neutral assistant in a source-note collection dialogue. "
@@ -119,6 +153,9 @@ def assistant_messages(history):
         "remains uncertain. You may form tentative local interpretations. "
         "Do not claim to know the hidden final question, do not invent answer "
         "options, and do not use a final-answer format. "
+        "Do not use the words subquestion, short answer, or red herring. "
+        "Do not say that a note directly answers a reasoning step, and do not "
+        "label any hidden benchmark decomposition or reasoning chain. "
         "Do not turn the conversation into formal notes, triples, numbered chains, "
         "or labels such as Status/Relation/Arrival order. "
         "Do not repeat long evidence spans. "
@@ -140,9 +177,9 @@ def generate_assistant_reply(history, *, base_url, model, temperature, max_token
     return content.strip()
 
 
-def build_dialogue(item, config, args, seed):
+def build_dialogue(item, config, args, seed, profile=None):
     profiles = config.get("layer1", {}).get("evidence_position_profiles") or PROFILE_NAMES
-    profile = stable_profile(seed, item["source_id"], profiles)
+    profile = profile or stable_profile(seed, item["source_id"], profiles)
     total_turns = args.turns or int(config["data"]["history_turns"].get("max", 8))
     user_turns, evidence_turn_map = build_user_turns(item, profile, total_turns)
 
@@ -184,6 +221,21 @@ def build_dialogue(item, config, args, seed):
             warnings.append("full_history_above_observation_range")
     if "Final Answer:" in rendered:
         issues.append("contains_final_answer_marker")
+    forbidden_phrases = [
+        "subquestion",
+        "short answer",
+        "red herring",
+        "directly answers",
+        "answers the subquestion",
+        "aligns with the subquestion",
+    ]
+    rendered_lower = rendered.lower()
+    for phrase in forbidden_phrases:
+        if phrase in rendered_lower:
+            issues.append(f"contains_forbidden_phrase:{phrase}")
+
+    recent_turns = int(config.get("compression", {}).get("hybrid_recent_turns", 1))
+    has_recent_evidence = critical_evidence_in_recent_turn(evidence_turn_map, total_turns, recent_turns)
 
     row = dict(item)
     row.update(
@@ -192,6 +244,7 @@ def build_dialogue(item, config, args, seed):
             "dialogue_profile": profile,
             "dialogue_turn_count": total_turns,
             "evidence_turn_map": evidence_turn_map,
+            "critical_evidence_in_recent_turn": has_recent_evidence,
             "dialogue_messages": messages,
             "dialogue_exchanges": exchanges,
             "dialogue_token_count_proxy": token_count,
@@ -237,10 +290,12 @@ def summarize(rows):
     warnings = {}
     token_counts = []
     profiles = {}
+    recent_evidence = {True: 0, False: 0}
     for row in rows:
         status = row["dialogue_audit"]["status"]
         statuses[status] = statuses.get(status, 0) + 1
         profiles[row["dialogue_profile"]] = profiles.get(row["dialogue_profile"], 0) + 1
+        recent_evidence[bool(row.get("critical_evidence_in_recent_turn"))] += 1
         token_counts.append(row["dialogue_token_count_proxy"])
         for issue in row["dialogue_audit"]["issues"]:
             issues[issue] = issues.get(issue, 0) + 1
@@ -252,6 +307,10 @@ def summarize(rows):
         "audit_issue_counts": dict(sorted(issues.items())),
         "audit_warning_counts": dict(sorted(warnings.items())),
         "profile_counts": dict(sorted(profiles.items())),
+        "critical_evidence_in_recent_turn_counts": {
+            "false": recent_evidence[False],
+            "true": recent_evidence[True],
+        },
         "token_count_proxy": {
             "min": min(token_counts) if token_counts else None,
             "mean": sum(token_counts) / len(token_counts) if token_counts else None,
@@ -273,10 +332,11 @@ def generate_dialogues(config, args):
     rows = read_jsonl(input_path)
 
     seed = int(config["experiment"].get("random_seed", 42))
+    assigned_profiles = assign_profiles(rows, config, args.split, seed)
     generated = []
     for idx, row in enumerate(rows, start=1):
         print(f"[{idx}/{len(rows)}] {row['source_id']}", flush=True)
-        generated.append(build_dialogue(row, config, args, seed))
+        generated.append(build_dialogue(row, config, args, seed, assigned_profiles[row["source_id"]]))
 
     audit_path = audit_dir / f"{args.split}_dialogue_audit.json"
     preview_path = preview_dir / f"{args.split}_dialogue_preview.md"

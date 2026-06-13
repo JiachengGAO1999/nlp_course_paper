@@ -92,6 +92,9 @@ note seems to establish, how it might relate to earlier notes, or what
 remains uncertain. You may form tentative local interpretations.
 Do not claim to know the hidden final question, do not invent answer
 options, and do not use a final-answer format.
+Do not use the words subquestion, short answer, or red herring.
+Do not say that a note directly answers a reasoning step, and do not
+label any hidden benchmark decomposition or reasoning chain.
 Do not turn the conversation into formal notes, triples, numbered chains,
 or labels such as Status/Relation/Arrival order.
 Do not repeat long evidence spans.
@@ -99,7 +102,9 @@ Keep the reply to 2-4 concise sentences."
 ```
 
 User turns are scripted to place evidence and distractors without revealing the
-held-out question:
+held-out question, answer options, or benchmark reasoning decomposition. They
+must not mention MuSiQue subquestions or source short answers; each evidence
+turn is presented as a potentially relevant source note.
 
 ```text
 turn_1: inject evidence item 1 + opening context
@@ -119,6 +124,10 @@ Evidence position profiles vary across samples:
 
 Position diversity prevents the hybrid condition from mechanically winning
 by always having critical evidence in the recent turn.
+The pipeline explicitly records `critical_evidence_in_recent_turn`, defined
+under the configured hybrid recent-turn window, so analyses can separate genuine
+architecture effects from recency placement effects. The formal set is balanced
+across the four evidence-position profiles.
 
 ### History-Length Stratification
 
@@ -132,6 +141,7 @@ history-length bins, preferably by quantiles after quality filtering.
 The formal sample is then selected to balance:
 - hop count (2 / 3 / 4 hops),
 - evidence position profile (`far_early`, `far_middle`, `cross_turn`, `late`),
+- whether answer-critical evidence appears in the recent-turn window,
 - full-history token bin (short / medium / long),
 - MC and dialogue quality audits.
 

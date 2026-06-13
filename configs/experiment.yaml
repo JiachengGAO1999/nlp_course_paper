@@ -69,6 +69,27 @@ layer1:
     - far_middle
     - cross_turn
     - late
+  split_profile_allocation:
+    smoke:
+      far_early: 1
+      far_middle: 1
+      cross_turn: 1
+      late: 1
+    pilot:
+      far_early: 3
+      far_middle: 3
+      cross_turn: 3
+      late: 3
+    formal:
+      far_early: 10
+      far_middle: 10
+      cross_turn: 10
+      late: 10
+    spares:
+      far_early: 1
+      far_middle: 1
+      cross_turn: 1
+      late: 1
 
 budgets:
   compressed_history_budget_tokens: 600
@@ -90,6 +111,7 @@ conditions:
 compression:
   paradigm: "prompt_based_self_compression"
   prompt_template: "docs/experiment_design.md"
+  hybrid_recent_turns: 1
   hybrid_budget:
     summary_max_tokens: 400
     recent_turn_max_tokens: 200
