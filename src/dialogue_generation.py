@@ -53,7 +53,8 @@ def build_evidence_turn(ev, turn_id):
         f"The entry titled \"{ev.get('title')}\" says: {snippet}\n\n"
         f"For now, I am noting it for this subquestion: {ev.get('subquestion')} "
         f"The source's short answer is: {ev.get('subanswer')}. "
-        f"Please just acknowledge this note and wait for the rest of the material."
+        f"Please think through what this entry seems to establish so far, while "
+        f"keeping any conclusion tentative until the rest of the material is available."
     )
 
 
@@ -75,7 +76,7 @@ def build_filler_turn(item, turn_id, filler_idx, profile):
         ),
         (
             f"I also have a possible stale lead: \"{text}\". It might be useful "
-            f"context, but I am not sure it is current or relevant. Please acknowledge "
+            f"context, but I am not sure it is current or relevant. Please treat "
             f"it as uncertain for now."
         ),
         (
@@ -112,17 +113,16 @@ def build_user_turns(item, profile, total_turns):
 def assistant_messages(history):
     system = (
         "You are a neutral assistant in a source-note collection dialogue. "
-        "Your job is to acknowledge the user's current note briefly and naturally. "
-        "Do not solve the hidden question. "
-        "Do not infer new relations. "
-        "Do not rewrite the note into triples. "
-        "Do not classify every item with formal labels unless the user explicitly "
-        "gives the label. "
+        "The user is gradually collecting source snippets and nearby leads. "
+        "Respond naturally with brief intermediate reasoning about what the current "
+        "note seems to establish, how it might relate to earlier notes, or what "
+        "remains uncertain. You may form tentative local interpretations. "
+        "Do not claim to know the hidden final question, do not invent answer "
+        "options, and do not use a final-answer format. "
+        "Do not turn the conversation into formal notes, triples, numbered chains, "
+        "or labels such as Status/Relation/Arrival order. "
         "Do not repeat long evidence spans. "
-        "If the user marks something as tentative, stale, background, or "
-        "source-backed, acknowledge that status in plain language. "
-        "Keep the reply to 1-2 short sentences. "
-        "Wait for the next note."
+        "Keep the reply to 2-4 concise sentences."
     )
     return [{"role": "system", "content": system}] + history
 
@@ -172,13 +172,16 @@ def build_dialogue(item, config, args, seed):
 
     rendered = render_dialogue(messages)
     token_count = count_tokens(rendered)
-    min_target = int(config["data"]["full_history_target_tokens"]["min"])
-    max_target = int(config["data"]["full_history_target_tokens"]["max"])
+    token_range = config["data"].get("full_history_target_tokens") or {}
     issues = []
-    if token_count < min_target:
-        issues.append("full_history_below_target")
-    if token_count > max_target:
-        issues.append("full_history_above_target")
+    warnings = []
+    if token_range.get("enabled"):
+        min_target = int(token_range["min"])
+        max_target = int(token_range["max"])
+        if token_count < min_target:
+            warnings.append("full_history_below_observation_range")
+        if token_count > max_target:
+            warnings.append("full_history_above_observation_range")
     if "Final Answer:" in rendered:
         issues.append("contains_final_answer_marker")
 
@@ -192,7 +195,11 @@ def build_dialogue(item, config, args, seed):
             "dialogue_messages": messages,
             "dialogue_exchanges": exchanges,
             "dialogue_token_count_proxy": token_count,
-            "dialogue_audit": {"status": "pass" if not issues else "requires_review", "issues": issues},
+            "dialogue_audit": {
+                "status": "pass" if not issues else "requires_review",
+                "issues": issues,
+                "warnings": warnings,
+            },
         }
     )
     return row
@@ -227,6 +234,7 @@ def write_preview(path, rows):
 def summarize(rows):
     statuses = {}
     issues = {}
+    warnings = {}
     token_counts = []
     profiles = {}
     for row in rows:
@@ -236,10 +244,13 @@ def summarize(rows):
         token_counts.append(row["dialogue_token_count_proxy"])
         for issue in row["dialogue_audit"]["issues"]:
             issues[issue] = issues.get(issue, 0) + 1
+        for warning in row["dialogue_audit"].get("warnings", []):
+            warnings[warning] = warnings.get(warning, 0) + 1
     return {
         "num_items": len(rows),
         "audit_status_counts": dict(sorted(statuses.items())),
         "audit_issue_counts": dict(sorted(issues.items())),
+        "audit_warning_counts": dict(sorted(warnings.items())),
         "profile_counts": dict(sorted(profiles.items())),
         "token_count_proxy": {
             "min": min(token_counts) if token_counts else None,

@@ -19,7 +19,7 @@ def main(argv):
     parser.add_argument("--model", default=None)
     parser.add_argument("--turns", type=int, default=None)
     parser.add_argument("--temperature", type=float, default=0.7)
-    parser.add_argument("--max-tokens", type=int, default=192)
+    parser.add_argument("--max-tokens", type=int, default=320)
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument("--retries", type=int, default=3)
     args = parser.parse_args(argv)

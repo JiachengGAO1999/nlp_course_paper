@@ -14,8 +14,10 @@ data:
     min: 6
     max: 8
   full_history_target_tokens:
-    min: 1500
-    max: 2500
+    enabled: false
+    min: null
+    max: null
+    note: "Observe natural dialogue token distribution first; set filtering range after candidate generation."
   required_evidence_per_sample:
     min: 2
     max: 4
