@@ -66,22 +66,37 @@ def build_filler_turn(item, turn_id, filler_idx, profile):
             f"Side note {turn_id}: I also ran into \"{text}\" while looking through "
             f"nearby material. It may simply be related background, so I do not want "
             f"to treat it as an answer or conclusion. Please keep it in mind lightly "
-            f"and wait for more context."
+            f"and wait for more context. I am mentioning it because it appeared near "
+            f"the same topic area and could be easy to confuse with the later source "
+            f"entries. At this point, though, I have not tied it to a specific title "
+            f"or passage. If it comes up again, I will add the source details then; "
+            f"for now it is just part of the surrounding material I noticed."
         ),
         (
             f"Another nearby item I saw was \"{text}\". It sounds connected to the "
             f"topic, but I have not checked whether it belongs to the main chain. "
-            f"For now, treat it as a loose lead rather than a resolved point."
+            f"For now, treat it as a loose lead rather than a resolved point. The "
+            f"reason I am keeping it in the conversation is that the names, places, "
+            f"or dates around this topic are fairly similar, and I do not want to "
+            f"forget that this one was only encountered in passing. I will bring in "
+            f"the more specific source entries separately."
         ),
         (
             f"I also have a possible stale lead: \"{text}\". It might be useful "
             f"context, but I am not sure it is current or relevant. Please acknowledge "
-            f"it as uncertain for now."
+            f"it as uncertain for now. I do not want to remove it from the notes yet, "
+            f"because it may explain why some nearby material points in a different "
+            f"direction. Still, I have not verified it against the source entries I am "
+            f"collecting, so it should stay tentative until more specific information "
+            f"appears."
         ),
         (
             f"One more bit of context before I add the next source: \"{text}\" came up "
             f"in the surrounding material. I am not asking you to decide anything from "
-            f"it yet; just note that it was mentioned."
+            f"it yet; just note that it was mentioned. It may turn out to be unrelated, "
+            f"or it may simply be a nearby entity that shares the same broad topic. "
+            f"I am including it so the conversation keeps the messy context of the "
+            f"search process, not because I think it settles the question."
         ),
     ]
     content = templates[filler_idx % len(templates)]
