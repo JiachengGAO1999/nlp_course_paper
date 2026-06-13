@@ -5,16 +5,29 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-def post_chat_completion(base_url, model, messages, temperature, max_tokens, timeout):
+def post_chat_completion(
+    base_url,
+    model,
+    messages,
+    temperature,
+    max_tokens,
+    timeout,
+    *,
+    top_p=1.0,
+    enable_thinking=False,
+    extra_body=None,
+):
     url = base_url.rstrip("/") + "/chat/completions"
     body = {
         "model": model,
         "messages": messages,
         "temperature": temperature,
-        "top_p": 1.0,
+        "top_p": top_p,
         "max_tokens": max_tokens,
-        "chat_template_kwargs": {"enable_thinking": False},
+        "chat_template_kwargs": {"enable_thinking": enable_thinking},
     }
+    if extra_body:
+        body.update(extra_body)
     data = json.dumps(body, ensure_ascii=False).encode("utf-8")
     request = Request(url, data=data, headers={"Content-Type": "application/json"})
     with urlopen(request, timeout=timeout) as response:
@@ -32,6 +45,9 @@ def chat_with_retries(
     timeout_seconds,
     retries,
     parser=None,
+    top_p=1.0,
+    enable_thinking=False,
+    extra_body=None,
 ):
     last_error = None
     for attempt in range(1, retries + 1):
@@ -43,6 +59,9 @@ def chat_with_retries(
                 temperature,
                 max_tokens,
                 timeout_seconds,
+                top_p=top_p,
+                enable_thinking=enable_thinking,
+                extra_body=extra_body,
             )
             parsed = parser(content) if parser else content
             return content, parsed, attempt
