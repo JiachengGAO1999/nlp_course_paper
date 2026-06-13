@@ -49,14 +49,11 @@ def evidence_turns(profile, hop_count, total_turns):
 def build_evidence_turn(ev, turn_id):
     snippet = truncate_words(ev.get("paragraph_text"), 280)
     return (
-        f"I am organizing source notes, and this is note {turn_id}. "
+        f"I found another source entry while collecting background. "
         f"The entry titled \"{ev.get('title')}\" says: {snippet}\n\n"
-        f"For my notes, I am treating this as: {ev.get('subquestion')} -> "
-        f"{ev.get('subanswer')}. Please keep it as a factual note for later, "
-        f"but do not make a final decision yet. If this later combines with other "
-        f"notes, keep the source title and the exact relation separate from any "
-        f"loose background material. Also preserve whether this note arrived before "
-        f"or after other notes, since recency may matter when the history is compressed."
+        f"For now, I am noting it for this subquestion: {ev.get('subquestion')} "
+        f"The source's short answer is: {ev.get('subanswer')}. "
+        f"Please just acknowledge this note and wait for the rest of the material."
     )
 
 
@@ -66,55 +63,32 @@ def build_filler_turn(item, turn_id, filler_idx, profile):
     text = distractor.get("text", "a related but probably irrelevant item")
     templates = [
         (
-            f"Side note {turn_id}: I also saw \"{text}\" while collecting nearby "
-            f"material. I am not treating it as a core fact yet, because I have not "
-            f"connected it to a direct source note in this chain. Please keep it as "
-            f"background only. The important distinction for later is that hard facts "
-            f"should come from source notes with titles and explicit relations, while "
-            f"this kind of nearby item should remain tentative unless a later note "
-            f"links it directly. Please also preserve the order in which these notes "
-            f"arrive, because later compression should know whether a point was early "
-            f"background or later source-backed evidence. Do not collapse this note "
-            f"into a conclusion; just keep its status clear."
+            f"Side note {turn_id}: I also ran into \"{text}\" while looking through "
+            f"nearby material. It may simply be related background, so I do not want "
+            f"to treat it as an answer or conclusion. Please keep it in mind lightly "
+            f"and wait for more context."
         ),
         (
-            f"Another housekeeping note: some sources use nearby names, places, or dates "
-            f"that look tempting, including \"{text}\". I do not want to over-weight it "
-            f"unless a later source ties it directly to the main chain. For now, keep it "
-            f"separate from the core facts. If it appears again, please preserve that it "
-            f"was only a loose contextual lead at this point, not an established answer "
-            f"or a resolved conclusion. The safest representation is to keep the item "
-            f"visible but clearly marked as unsupported background. The ordering matters "
-            f"because this may be separated from later source notes during compression."
+            f"Another nearby item I saw was \"{text}\". It sounds connected to the "
+            f"topic, but I have not checked whether it belongs to the main chain. "
+            f"For now, treat it as a loose lead rather than a resolved point."
         ),
         (
-            f"I am also tracking a possible stale lead: \"{text}\". It might be useful "
-            f"context, but it should not override the more direct source notes. If later "
-            f"notes conflict with this, the later direct evidence should take priority. "
-            f"Please remember the state distinction: current source-backed facts outrank "
-            f"older or weaker context, and unsupported leads should not be merged into "
-            f"the factual chain. This should remain true even if the loose lead sounds "
-            f"semantically close to a later source note. Please keep the uncertainty "
-            f"attached to the item itself."
+            f"I also have a possible stale lead: \"{text}\". It might be useful "
+            f"context, but I am not sure it is current or relevant. Please acknowledge "
+            f"it as uncertain for now."
         ),
         (
-            f"Before the next source note, I want to mark the distinction between hard "
-            f"facts and loose context. Hard facts should come from quoted source notes. "
-            f"Loose context such as \"{text}\" should remain tentative unless directly "
-            f"supported. Please keep that separation explicit, because I will later need "
-            f"to know which details were grounded in the quoted sources and which were "
-            f"just nearby material from the collection process. Preserving that boundary "
-            f"is more important than making the notes sound tidy. The later summary "
-            f"should not erase this distinction."
+            f"One more bit of context before I add the next source: \"{text}\" came up "
+            f"in the surrounding material. I am not asking you to decide anything from "
+            f"it yet; just note that it was mentioned."
         ),
     ]
     content = templates[filler_idx % len(templates)]
     if profile == "cross_turn" and int(item.get("hop_count", 0)) <= 3:
         content += (
-            " Since the source-backed notes are spread apart in this thread, please "
-            "keep this middle context visible but clearly lower priority than direct "
-            "evidence. The separation between early facts, middle background, and late "
-            "facts should remain recoverable after compression."
+            " I am still gathering pieces from different parts of the material, so "
+            "please do not draw a conclusion from this item alone."
         )
     return content
 
@@ -137,10 +111,18 @@ def build_user_turns(item, profile, total_turns):
 
 def assistant_messages(history):
     system = (
-        "You are a helpful assistant in a note-organization conversation. "
-        "Keep responses concise and natural. Do not make final decisions, do not answer "
-        "a hidden multiple-choice question, and do not rank options. Acknowledge the "
-        "current note, separate hard facts from tentative context, and wait for more."
+        "You are a neutral assistant in a source-note collection dialogue. "
+        "Your job is to acknowledge the user's current note briefly and naturally. "
+        "Do not solve the hidden question. "
+        "Do not infer new relations. "
+        "Do not rewrite the note into triples. "
+        "Do not classify every item with formal labels unless the user explicitly "
+        "gives the label. "
+        "Do not repeat long evidence spans. "
+        "If the user marks something as tentative, stale, background, or "
+        "source-backed, acknowledge that status in plain language. "
+        "Keep the reply to 1-2 short sentences. "
+        "Wait for the next note."
     )
     return [{"role": "system", "content": system}] + history
 
