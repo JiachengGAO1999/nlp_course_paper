@@ -8,6 +8,14 @@ from src.text_utils import count_tokens, render_dialogue
 
 
 PROFILE_NAMES = ["far_early", "far_middle", "cross_turn", "late"]
+FORBIDDEN_DIALOGUE_PHRASES = [
+    "subquestion",
+    "short answer",
+    "red herring",
+    "directly answers",
+    "answers the subquestion",
+    "aligns with the subquestion",
+]
 
 
 def stable_profile(seed, source_id, profiles):
@@ -144,6 +152,11 @@ def critical_evidence_in_recent_turn(evidence_turn_map, total_turns, recent_turn
     return any(int(turn) >= first_recent_turn for turn in evidence_turn_map.values())
 
 
+def forbidden_phrase_hits(text):
+    lowered = str(text or "").lower()
+    return [phrase for phrase in FORBIDDEN_DIALOGUE_PHRASES if phrase in lowered]
+
+
 def assistant_messages(history):
     system = (
         "You are a neutral assistant in a source-note collection dialogue. "
@@ -156,6 +169,8 @@ def assistant_messages(history):
         "Do not use the words subquestion, short answer, or red herring. "
         "Do not say that a note directly answers a reasoning step, and do not "
         "label any hidden benchmark decomposition or reasoning chain. "
+        "When a lead seems irrelevant, call it uncertain, tangential, or a loose "
+        "lead instead of using task-analysis labels. "
         "Do not turn the conversation into formal notes, triples, numbered chains, "
         "or labels such as Status/Relation/Arrival order. "
         "Do not repeat long evidence spans. "
@@ -196,6 +211,23 @@ def build_dialogue(item, config, args, seed, profile=None):
             timeout_seconds=args.timeout_seconds,
             retries=args.retries,
         )
+        retry_idx = 0
+        while forbidden_phrase_hits(assistant) and retry_idx < 2:
+            retry_idx += 1
+            print(
+                f"  retrying assistant turn {user_turn['turn_id']} after forbidden phrase: "
+                f"{forbidden_phrase_hits(assistant)}",
+                flush=True,
+            )
+            assistant = generate_assistant_reply(
+                messages,
+                base_url=args.base_url or config["summarizer"]["base_url"],
+                model=args.model or config["summarizer"]["model"],
+                temperature=args.temperature,
+                max_tokens=args.max_tokens,
+                timeout_seconds=args.timeout_seconds,
+                retries=args.retries,
+            )
         messages.append({"role": "assistant", "content": assistant})
         exchanges.append(
             {
@@ -221,18 +253,8 @@ def build_dialogue(item, config, args, seed, profile=None):
             warnings.append("full_history_above_observation_range")
     if "Final Answer:" in rendered:
         issues.append("contains_final_answer_marker")
-    forbidden_phrases = [
-        "subquestion",
-        "short answer",
-        "red herring",
-        "directly answers",
-        "answers the subquestion",
-        "aligns with the subquestion",
-    ]
-    rendered_lower = rendered.lower()
-    for phrase in forbidden_phrases:
-        if phrase in rendered_lower:
-            issues.append(f"contains_forbidden_phrase:{phrase}")
+    for phrase in forbidden_phrase_hits(rendered):
+        issues.append(f"contains_forbidden_phrase:{phrase}")
 
     recent_turns = int(config.get("compression", {}).get("hybrid_recent_turns", 1))
     has_recent_evidence = critical_evidence_in_recent_turn(evidence_turn_map, total_turns, recent_turns)
