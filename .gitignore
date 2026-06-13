@@ -12,6 +12,9 @@ env/
 data/
 runs/
 
+# Local reading/reference materials
+refs/
+
 # Logs and temporary files
 *.log
 *.tmp
