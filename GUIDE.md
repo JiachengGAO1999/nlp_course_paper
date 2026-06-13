@@ -92,8 +92,12 @@ Main planned setting:
   samples into short / medium / long history-length regimes instead of forcing a
   narrow token window. History length is treated as a context-pressure variable
   and can be analyzed as a covariate or interaction term.
-- Compressed-history budget: approximately 600 tokens.
-- Acceptable compressed-history range: 500–800 tokens.
+- Main compressed-history target: approximately 800 tokens, selected after
+  smoke/pilot showed Qwen3 summarizer naturally outputs around 700–800 tokens
+  under the earlier 600-token target.
+- Acceptable compressed-history range: 500–1000 tokens.
+- Harder 600-token compression remains available as a budget-sweep setting
+  rather than the main formal setting.
 - Thinking budget: 512 tokens.
 
 Full History is the uncompressed quality/cost upper bound and is not constrained
@@ -118,8 +122,8 @@ varies:
 
 3. `hybrid_summary_recent`
    - Older turns compressed into a summary; most recent 1 complete turn kept verbatim.
-   - Budget allocation: summary ≤400 tokens, recent turn ≤200 tokens.
-   - If the most recent turn exceeds 250 tokens, keep only the most recent user
+   - Budget allocation: summary ≤550 tokens, recent turn ≤250 tokens.
+   - If the most recent turn exceeds 300 tokens, keep only the most recent user
      message verbatim and allocate the remainder to the summary.
    - Represents the production-standard pattern (Claude Agent SDK compaction,
      LangChain ConversationSummaryBufferMemory).
@@ -248,7 +252,7 @@ evidence positions — the best of both worlds.
      evidence retention in compressed artifacts.
    - Acceptance criteria:
      - Parse rate ≥ 95%.
-     - Compressed variants mostly within 500–800 history tokens.
+     - Compressed variants mostly within 500–1000 history tokens.
      - Full History token distribution is concentrated enough to support a common
        compression setting; numeric range is set after observing generated data.
      - No inspected summary leaks the final answer.

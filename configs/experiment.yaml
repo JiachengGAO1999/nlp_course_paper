@@ -92,10 +92,10 @@ layer1:
       late: 1
 
 budgets:
-  compressed_history_budget_tokens: 600
+  compressed_history_budget_tokens: 800
   compressed_history_budget_tolerance:
     min: 500
-    max: 800
+    max: 1000
   optional_budget_sweep_tokens:
     - 300
     - 600
@@ -113,15 +113,15 @@ compression:
   prompt_template: "docs/experiment_design.md"
   hybrid_recent_turns: 1
   hybrid_budget:
-    summary_max_tokens: 400
-    recent_turn_max_tokens: 200
-    recent_turn_overflow_threshold: 250
+    summary_max_tokens: 550
+    recent_turn_max_tokens: 250
+    recent_turn_overflow_threshold: 300
 
 pilot_acceptance:
   min_parse_rate: 0.95
   compressed_history_token_range:
     min: 500
-    max: 800
+    max: 1000
   full_history_average_token_range:
     min: 1500
     max: 2500

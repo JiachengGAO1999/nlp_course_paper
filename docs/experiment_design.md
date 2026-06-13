@@ -29,7 +29,7 @@ compression prompt template for the two compressed conditions).
 - Same decoding settings.
 - Same answer prompt.
 - Same benchmark questions and options.
-- Same compressed-history budget (~600 tokens) for compressed conditions.
+- Same compressed-history budget (~800 tokens) for compressed conditions.
 - Same fixed thinking budget (512 tokens).
 - Same dialogue generation procedure.
 - Formal samples are stratified by hop count, evidence position, and observed
@@ -172,8 +172,8 @@ Older turns → compression prompt → summary.
 Most recent 1 complete turn → kept verbatim.
 Final compressed history = summary + separator + recent turn.
 
-Budget: summary ≤400 tokens, recent turn ≤200 tokens. If the recent
-turn exceeds 250 tokens, keep only the most recent user message verbatim.
+Budget: summary ≤550 tokens, recent turn ≤250 tokens. If the recent
+turn exceeds 300 tokens, keep only the most recent user message verbatim.
 
 Represents production compaction (Claude Agent SDK,
 LangChain `ConversationSummaryBufferMemory`). Tests whether preserving
@@ -280,7 +280,7 @@ Then give a brief explanation mentioning the key evidence from the context.
 - All 3 conditions.
 - Acceptance criteria:
   - Parse rate ≥ 95%.
-  - Compressed variants mostly within 500–800 history tokens.
+  - Compressed variants mostly within 500–1000 history tokens.
   - Full History token distribution is concentrated enough to support a
     common compression setting; the numeric range is set after observing the
     natural dialogue distribution.
