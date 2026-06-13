@@ -64,11 +64,9 @@ Rules:
 - Distractors must have the same semantic type as the gold answer when possible.
 - Distractors should be plausible enough for a multiple-choice benchmark.
 - Distractors must NOT be supported by the evidence.
-- Strictly do NOT choose any exact name, date, number, organization, place, title,
-  or value that appears in a required evidence paragraph that also contains the
-  gold answer. Those co-listed items create low-quality multiple-choice options.
-- Prefer plausible alternatives from the same semantic type that do not appear
-  verbatim in the required evidence.
+- Avoid choosing distractors that are merely co-listed in the same required evidence
+  paragraph as the gold answer. At most one distractor may be an exact name/date/value
+  appearing in a paragraph that also contains the gold answer.
 - Do not solve the question for a test-taker. This is data construction.
 - Return only valid JSON. No markdown.
 
@@ -243,8 +241,7 @@ def has_gold_paragraph_bottleneck(item):
 
 def generate_converted_item(row, config, args, seed):
     last_converted = None
-    max_semantic_attempts = max(args.retries, 6)
-    for semantic_attempt in range(1, max_semantic_attempts + 1):
+    for semantic_attempt in range(1, args.retries + 1):
         generated = generate_distractors(
             row,
             base_url=args.base_url or config["summarizer"]["base_url"],
@@ -257,12 +254,11 @@ def generate_converted_item(row, config, args, seed):
         converted = convert_item(row, generated, seed)
         converted["mc_semantic_attempts"] = semantic_attempt
         last_converted = converted
-        issues = converted.get("mc_audit", {}).get("issues", [])
-        if not issues:
+        if not has_gold_paragraph_bottleneck(converted):
             return converted
         print(
-            f"  retrying distractors after audit issues {issues} "
-            f"(semantic attempt {semantic_attempt}/{max_semantic_attempts})",
+            f"  retrying distractors: gold paragraph contains multiple distractors "
+            f"(semantic attempt {semantic_attempt}/{args.retries})",
             flush=True,
         )
     return last_converted
