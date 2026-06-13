@@ -32,6 +32,9 @@ compression prompt template for the two compressed conditions).
 - Same compressed-history budget (~600 tokens) for compressed conditions.
 - Same fixed thinking budget (512 tokens).
 - Same dialogue generation procedure.
+- Formal samples are stratified by hop count, evidence position, and observed
+  full-history token length when the natural dialogue length distribution is
+  dispersed.
 
 **Dependent variables**:
 - Final-answer accuracy (primary).
@@ -42,6 +45,7 @@ compression prompt template for the two compressed conditions).
 - Stale-state handling.
 - Hallucinated fact count.
 - Compressed-history token count + compression ratio.
+- Full-history token bin (short / medium / long) as a context-pressure variable.
 - Reasoning output length + content output length.
 - Parse success rate.
 
@@ -115,6 +119,26 @@ Evidence position profiles vary across samples:
 
 Position diversity prevents the hybrid condition from mechanically winning
 by always having critical evidence in the recent turn.
+
+### History-Length Stratification
+
+Dialogue length is not fixed by template. The pipeline first generates an
+oversized candidate pool of natural assistant-mediated reasoning histories and
+observes their full-history token distribution. If the distribution is compact,
+the formal set may use a common range as a quality gate. If the distribution is
+dispersed, the project keeps the variation and forms short / medium / long
+history-length bins, preferably by quantiles after quality filtering.
+
+The formal sample is then selected to balance:
+- hop count (2 / 3 / 4 hops),
+- evidence position profile (`far_early`, `far_middle`, `cross_turn`, `late`),
+- full-history token bin (short / medium / long),
+- MC and dialogue quality audits.
+
+History length is analyzed as a context-pressure variable. The main comparison
+remains the compression architecture effect, but the analysis also checks whether
+one-shot summarization and hybrid summary + recent turns diverge more strongly
+in longer-history regimes.
 
 ## Conditions
 
@@ -255,8 +279,14 @@ Then give a brief explanation mentioning the key evidence from the context.
   - Reasoning and content fields logged correctly.
 
 ### 4. Formal (40 samples)
-- Freeze seed, config, prompt, benchmark sample set, scorer, analysis scripts.
-- 40 samples × 3 conditions = 120 inferences.
+- Generate an oversized dialogue candidate pool, then freeze seed, config,
+  prompt, stratified benchmark sample set, scorer, and analysis scripts.
+- Select the formal sample by quality gates plus balancing over hop count,
+  evidence position, and full-history token bin.
+- 40 samples × 3 conditions = 120 inferences by default.
+- If resources allow and the token-length interaction is central, expand to
+  60 samples × 3 conditions = 180 inferences with roughly equal short / medium /
+  long bins.
 - Save all artifacts.
 
 ### 5. Supplementary (optional)

@@ -60,5 +60,6 @@ data/layer1/previews/     Human-readable inspection previews
 
 ## Design Documents
 
+- [docs/research_framework.md](docs/research_framework.md) — concise shareable research framework.
 - [GUIDE.md](GUIDE.md) — full project guide, decisions, and status.
 - [docs/experiment_design.md](docs/experiment_design.md) — detailed experiment design.

@@ -87,6 +87,10 @@ Main planned setting:
 
 - Full History length range: observed after generation, then used for candidate
   filtering rather than fixed before dialogue construction.
+- If natural dialogue lengths are dispersed, retain this variation and stratify
+  samples into short / medium / long history-length regimes instead of forcing a
+  narrow token window. History length is treated as a context-pressure variable
+  and can be analyzed as a covariate or interaction term.
 - Compressed-history budget: approximately 600 tokens.
 - Acceptable compressed-history range: 500–800 tokens.
 - Thinking budget: 512 tokens.
@@ -216,6 +220,9 @@ evidence positions — the best of both worlds.
 - Compressed-history token count + compression ratio.
 - Reasoning output length.
 - Parse success rate.
+- Full-history token bin (short / medium / long), used to analyze whether
+  compression architecture effects change under different context-pressure
+  regimes.
 
 ## Experiment Progression
 
@@ -244,8 +251,13 @@ evidence positions — the best of both worlds.
      - No ambiguous gold answer.
 
 4. Formal run
-   - Freeze seed, config, prompt, benchmark sample set, scorer, analysis scripts.
-   - 40 samples × 3 conditions = 120 inferences.
+   - Generate an oversized dialogue candidate pool.
+   - Freeze seed, config, prompt, stratified benchmark sample set, scorer, and
+     analysis scripts.
+   - Select the formal sample by quality gates plus stratification over hop count,
+     evidence position, and full-history token bin.
+   - 40 samples × 3 conditions = 120 inferences by default; if token bins are
+     highly informative and resources allow, expand to 60 samples × 3 conditions.
    - Save all artifacts under a fresh run directory.
 
 5. Supplementary checks (optional)
@@ -294,8 +306,10 @@ avoid complex inline `ssh` commands. Use three levels of remote scripts:
   organizer" to natural intermediate reasoning. The assistant may reason over
   visible notes, but does not see the held-out final question/options or use a
   final-answer format. Token ranges will be selected after observing generated
-  dialogue distributions. The older structured-output data should be treated as
-  a future ablation candidate, not the main Layer 1 input.
+  dialogue distributions. If the distribution is dispersed, the formal design
+  will stratify by history length rather than discarding natural variation. The
+  older structured-output data should be treated as a future ablation candidate,
+  not the main Layer 1 input.
 
 ## Next Steps
 
@@ -303,10 +317,12 @@ avoid complex inline `ssh` commands. Use three levels of remote scripts:
    and inspect the preview for naturalness, no final-question/option leakage,
    and no structured-note formatting.
 2. If smoke passes, regenerate pilot/formal dialogues and audits with the same
-   prompt.
-3. Build compression variants for smoke: full history, one-shot summary, and
+   prompt, preferably from an oversized candidate pool.
+3. Inspect natural token distribution and define short / medium / long bins for
+   formal stratified sampling.
+4. Build compression variants for smoke: full history, one-shot summary, and
    hybrid summary + recent.
-4. Run smoke inference on Qwen3-8B, then proceed to pilot if parsing, budgets,
+5. Run smoke inference on Qwen3-8B, then proceed to pilot if parsing, budgets,
    and manual audits are healthy.
 
 ## Legacy Note
