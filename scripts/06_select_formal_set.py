@@ -17,6 +17,8 @@ def main(argv):
     parser.add_argument("--output", default="data/layer1/dialogues/formal_selected_dialogues.jsonl")
     parser.add_argument("--audit", default="data/layer1/audits/formal_selection_audit.json")
     parser.add_argument("--target-n", type=int, default=None)
+    parser.add_argument("--hop-allocation-json", default=None)
+    parser.add_argument("--profile-allocation-json", default=None)
     parser.add_argument("--tries", type=int, default=5000)
     args = parser.parse_args(argv)
 

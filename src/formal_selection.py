@@ -1,4 +1,5 @@
 import random
+import json
 from pathlib import Path
 
 from src.io_utils import read_jsonl, write_json, write_jsonl
@@ -6,6 +7,29 @@ from src.io_utils import read_jsonl, write_json, write_jsonl
 
 def normalize_int_key_map(mapping):
     return {int(k): int(v) for k, v in (mapping or {}).items()}
+
+
+def scale_allocation(allocation, target_total):
+    current_total = sum(allocation.values())
+    if current_total <= 0:
+        raise ValueError("Cannot scale an empty allocation")
+    if current_total == target_total:
+        return dict(allocation)
+    scaled = {}
+    remainders = []
+    for key, value in allocation.items():
+        exact = value * target_total / current_total
+        base = int(exact)
+        scaled[key] = base
+        remainders.append((exact - base, key))
+    remaining = target_total - sum(scaled.values())
+    for _, key in sorted(remainders, reverse=True)[:remaining]:
+        scaled[key] += 1
+    return scaled
+
+
+def normalize_str_key_map(mapping):
+    return {str(k): int(v) for k, v in (mapping or {}).items()}
 
 
 def passing_full_history_ids(results):
@@ -62,13 +86,22 @@ def try_select(candidates, hop_target, profile_target, seed):
 
 def select_formal_set(config, args):
     target_n = int(args.target_n or config["data"].get("formal_num_samples", 40))
-    hop_target = normalize_int_key_map((config.get("layer1") or {}).get("formal_hop_allocation") or {2: 8, 3: 20, 4: 12})
-    profile_target = (config.get("layer1") or {}).get("formal_profile_allocation") or {
+    layer1 = config.get("layer1") or {}
+    if getattr(args, "hop_allocation_json", None):
+        hop_target = normalize_int_key_map(json.loads(args.hop_allocation_json))
+    else:
+        hop_target = normalize_int_key_map(layer1.get("formal_hop_allocation") or {2: 8, 3: 20, 4: 12})
+        hop_target = scale_allocation(hop_target, target_n)
+    if getattr(args, "profile_allocation_json", None):
+        profile_target = normalize_str_key_map(json.loads(args.profile_allocation_json))
+    else:
+        profile_target = normalize_str_key_map(layer1.get("formal_profile_allocation") or {
         "far_early": 10,
         "far_middle": 10,
         "cross_turn": 10,
         "late": 10,
-    }
+        })
+        profile_target = scale_allocation(profile_target, target_n)
     if sum(hop_target.values()) != target_n or sum(profile_target.values()) != target_n:
         raise ValueError("Formal hop/profile targets must both sum to target_n")
 

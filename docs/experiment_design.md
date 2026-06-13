@@ -2,27 +2,37 @@
 
 ## Objective
 
-Measure how different compression architectures within the prompt-based
-self-compression paradigm affect multi-turn reasoning QA reliability under
-a fixed compressed-history budget.
+Diagnose how prompt-based self-compression fails on evidence-bearing multi-turn
+reasoning histories under a fixed compressed-history budget.
 
 ## Research Question
 
-Under a fixed compressed-history budget, when using LLM self-compression
-with a **shared compression prompt**, does the production-standard hybrid
-architecture (summary of older turns + recent turn verbatim) outperform
-simple one-shot full-history summarization at preserving downstream
-multi-turn reasoning QA accuracy? And how far is each from the full-history
-upper bound?
+Under a fixed compressed-history budget and a **shared compression prompt**, is
+downstream failure better explained by evidence position or by local
+interference between answer-critical evidence and competing context?
 
-The study is about **compression architecture** — whether to partition
-history before compression — not prompt engineering (the prompt template
-is identical across compressed conditions).
+Secondary diagnostic question:
+
+> When does hybrid summary + recent verbatim retention help by preserving
+> answer-critical evidence, and when does it hurt by preserving salient recent
+> distractors?
+
+The study is about **compression architecture as a diagnostic intervention**,
+not prompt engineering. The prompt template is identical across compressed
+conditions; what changes is whether the history is compressed as one block or
+partitioned into older summary plus recent verbatim context.
 
 ## Variables
 
-**Independent variable**: Compression architecture (3 conditions, same
+**Primary experimental factor**: Compression architecture (3 conditions, same
 compression prompt template for the two compressed conditions).
+
+**Diagnostic factors**:
+- Evidence position profile (`far_early`, `far_middle`, `cross_turn`, `late`).
+- Whether critical evidence appears in the recent-turn window.
+- Local competition density between answer-critical evidence and distractors.
+- Distractor volume and recent distractor salience.
+- Full-history token bin as a context-pressure variable.
 
 **Controlled constraints**:
 - Same model (Qwen3-8B) for both compression and answering.
@@ -37,7 +47,8 @@ compression prompt template for the two compressed conditions).
   dispersed.
 
 **Dependent variables**:
-- Final-answer accuracy (primary).
+- Final-answer accuracy (primary outcome).
+- Compression-induced failure mechanism (manual annotation for critical cases).
 - Error type (mapped from benchmark option structure or manual annotation).
 - Answerability after compression.
 - Required evidence retention.
@@ -46,6 +57,9 @@ compression prompt template for the two compressed conditions).
 - Hallucinated fact count.
 - Compressed-history token count + compression ratio.
 - Full-history token bin (short / medium / long) as a context-pressure variable.
+- Recent verbatim effect (`helpful`, `harmful`, `neutral`, `not_applicable`).
+- Hybrid benefit source (`recent_verbatim_retention`, `focused_older_summary`,
+  `both`, `none`).
 - Reasoning output length + content output length.
 - Parse success rate.
 
@@ -145,10 +159,9 @@ The formal sample is then selected to balance:
 - full-history token bin (short / medium / long),
 - MC and dialogue quality audits.
 
-History length is analyzed as a context-pressure variable. The main comparison
-remains the compression architecture effect, but the analysis also checks whether
-one-shot summarization and hybrid summary + recent turns diverge more strongly
-in longer-history regimes.
+History length is analyzed as a context-pressure variable. The main analysis
+checks whether failures cluster around dense competing context and whether that
+interaction changes across short / medium / long histories.
 
 ## Conditions
 
@@ -177,10 +190,11 @@ turn exceeds 300 tokens, keep only the most recent user message verbatim.
 
 Represents production compaction (Claude Agent SDK,
 LangChain `ConversationSummaryBufferMemory`). Tests whether preserving
-recent turns verbatim mitigates summary omission or stale-state errors.
+recent turns verbatim mitigates summary omission, preserves original relational
+wording, or instead amplifies recent distractors.
 
-The core comparison is: given the same compression model, same prompt
-template, and same budget, does partitioning help?
+The core comparison is diagnostic: given the same compression model, same prompt
+template, and same budget, what does partitioning preserve, drop, or overweight?
 
 ## Compression Prompt Template (shared across conditions 2–3)
 
@@ -256,12 +270,20 @@ Then give a brief explanation mentioning the key evidence from the context.
 - Full manual audit for pilot (12 samples × 2 compressed conditions = 24
   artifacts). Spot-check for formal.
 
-**Manual audit** (pilot):
-- Gold answer consistency.
-- No answer leakage in summaries.
-- Whether explanations cite correct evidence.
-- Whether compressed artifacts hallucinate facts.
-- Stale-state handling correctness.
+**Manual mechanism audit** (critical cases):
+- `compression_effect`: `evidence_omitted`, `distractor_overweighted`,
+  `relation_structure_blurred`, `exact_value_collapse`,
+  `recent_distractor_interference`, or `no_major_compression_loss`.
+- `downstream_error`: wrong entity/numeric/time-period anchor, exact value lost,
+  or recency distractor latch.
+- `compression_vs_reasoning`: compression-primary, reasoning-primary, or mixed.
+- Distractor volume and local competition density.
+- Recent verbatim effect and hybrid benefit source.
+- Answer correctness quality and audit confidence.
+
+This audit is performed after inference. Scale-up runs should stop before this
+manual step so that sample selection for annotation can be driven by the new
+automatic results.
 
 ## Run Plan
 
@@ -294,12 +316,29 @@ Then give a brief explanation mentioning the key evidence from the context.
 - Select the formal sample by quality gates plus balancing over hop count,
   evidence position, and full-history token bin.
 - 40 samples × 3 conditions = 120 inferences by default.
-- If resources allow and the token-length interaction is central, expand to
-  60 samples × 3 conditions = 180 inferences with roughly equal short / medium /
-  long bins.
 - Save all artifacts.
 
-### 5. Supplementary (optional)
+### 5. Scale-Up Before Manual Annotation
+
+- Generate a larger candidate pool, e.g. 160 items.
+- Run the same full-history gate.
+- Select a larger formal set, e.g. 80 items, with scaled hop/profile targets.
+- Build the same three variants and run inference.
+- Stop after automatic summaries and parsed generations.
+- Do not manually annotate until the critical failure cases are selected from
+  the larger result set.
+
+Example server command:
+
+```bash
+RUN_DATE=20260614 \
+RUN_ID=layer1_scale80_qwen3_8b_budget800_20260614 \
+FORMAL_POOL_SIZE=160 \
+FORMAL_TARGET_N=80 \
+bash scripts/remote/run_formal_pipeline.sh
+```
+
+### 6. Supplementary (optional)
 - Budget sweep: 300 / 600 / 900 tokens on 10 samples.
 - Larger thinking budget sanity check.
 - Smaller summarizer model ablation.

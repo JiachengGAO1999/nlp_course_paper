@@ -1,4 +1,5 @@
 import random
+import json
 from pathlib import Path
 
 from src.io_utils import iter_jsonl, read_jsonl, write_json, write_jsonl
@@ -15,6 +16,36 @@ def normalize_int_key_map(mapping):
     return {int(k): int(v) for k, v in (mapping or {}).items()}
 
 
+def scale_allocation(allocation, target_total):
+    current_total = sum(allocation.values())
+    if current_total <= 0:
+        raise ValueError("Cannot scale an empty allocation")
+    if current_total == target_total:
+        return dict(allocation)
+    scaled = {}
+    remainders = []
+    for key, value in allocation.items():
+        exact = value * target_total / current_total
+        base = int(exact)
+        scaled[key] = base
+        remainders.append((exact - base, key))
+    remaining = target_total - sum(scaled.values())
+    for _, key in sorted(remainders, reverse=True)[:remaining]:
+        scaled[key] += 1
+    return scaled
+
+
+def resolve_allocation(config, args):
+    layer1 = config.get("layer1") or {}
+    if getattr(args, "hop_allocation_json", None):
+        allocation = normalize_int_key_map(json.loads(args.hop_allocation_json))
+    else:
+        allocation = normalize_int_key_map(layer1.get("formal_pool_hop_allocation") or {2: 16, 3: 40, 4: 24})
+    if getattr(args, "pool_size", None):
+        allocation = scale_allocation(allocation, int(args.pool_size))
+    return allocation
+
+
 def read_existing_ids(paths):
     ids = set()
     for path in paths:
@@ -29,7 +60,7 @@ def read_existing_ids(paths):
 def prepare_formal_pool(config, args):
     seed = int(config["experiment"].get("random_seed", 42))
     layer1 = config.get("layer1") or {}
-    allocation = normalize_int_key_map(layer1.get("formal_pool_hop_allocation") or {2: 16, 3: 40, 4: 24})
+    allocation = resolve_allocation(config, args)
     min_hops = min(allocation)
     max_hops = max(allocation)
     excluded = set(layer1.get("excluded_source_ids") or [])

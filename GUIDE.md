@@ -4,43 +4,48 @@
 
 This course-paper project studies:
 
-> How different compression architectures within the prompt-based self-compression
-> paradigm affect downstream multi-turn reasoning QA reliability.
+> How prompt-based self-compression fails on evidence-bearing multi-turn
+> histories: is downstream failure better explained by evidence position, or by
+> interference between answer-critical evidence and competing context?
 
 The project is aligned with the broader research direction:
 
 > Multi-turn reasoning reliability and inference-time context/state control for LLMs.
 
 The paper is **not** framed as prompt engineering. All compression conditions use
-the **same compression prompt template**. The independent variable is **what
-information and what structure** enter that prompt — i.e., compression architecture,
-not prompt phrasing.
+the **same compression prompt template**. Compression architecture is used as a
+diagnostic intervention: the experiment asks what each architecture preserves,
+drops, or overweights under the same budget.
 
 Working title:
 
-> 对话历史压缩架构对多轮推理问答的影响
+> 多轮交互历史自压缩中的证据混淆问题
 
 ## Core Research Question
 
 Under a fixed compressed-history budget, when using LLM self-compression (the
 dominant production paradigm — Claude compaction, ChatGPT memory, LangChain
-ConversationSummaryMemory), which compression architecture best preserves
-downstream multi-turn reasoning QA accuracy?
+ConversationSummaryMemory), are downstream failures mainly caused by positional
+evidence loss, or by interference between answer-critical evidence and competing
+context during compression?
 
-The independent variable is **compression architecture** — how information is
-routed into a fixed compression prompt — not the prompt wording itself.
+The architecture comparison is a mechanism probe:
+
+- `full_history` verifies that the original dialogue is answerable.
+- `one_shot_summary` exposes prompt-based self-compression failure modes.
+- `hybrid_summary_recent` tests what changes when recent context is kept
+  verbatim rather than absorbed into the summary.
 
 ## Research Gap
 
 Existing work (Jha et al. 2024 ICML, Li et al. 2025 NAACL survey) compares
 compression *method families* (token pruning vs. extractive vs. abstractive).
-But no work has directly compared the two dominant production compression
-architectures — **one-shot full-history summarization** vs. **hybrid
-summary + recent turns** — on controlled multi-turn reasoning QA with
-ground-truth-labeled accuracy as the DV and evidence retention as an
-intermediate process measure. Both are prompt-based self-compression; they
-differ only in whether the most recent turn is preserved verbatim or absorbed
-into the summary.
+Less is known about how production-style prompt-based self-compression fails
+inside assistant-mediated reasoning histories. A simple "hybrid beats
+one-shot" result is not the core contribution; the contribution is a controlled
+diagnosis of whether failures come from evidence omission, distractor
+overweighting, relation-structure blur, exact-value collapse, or harmful recent
+distractor retention.
 
 This course paper fills that modest but real gap.
 
@@ -67,8 +72,10 @@ This course paper fills that modest but real gap.
 - Main inference setting: thinking enabled with fixed budgeted thinking.
 - Main answer format: `Final Answer: <A/B/C/D>` plus brief evidence-based explanation.
 - No step-by-step or explicit verification instruction in the answer prompt.
-- Main experiment: 40 samples × 3 conditions = 120 inferences.
-- Formal run should happen only after smoke and pilot checks are healthy.
+- Completed formal run: 40 samples × 3 conditions = 120 inferences.
+- Next scale-up target: 80 selected samples × 3 conditions = 240 inferences,
+  generated from a 160-item pool, stopping before the next manual mechanism
+  annotation pass.
 
 ## Budgets
 
@@ -127,14 +134,14 @@ varies:
      message verbatim and allocate the remainder to the summary.
    - Represents the production-standard pattern (Claude Agent SDK compaction,
      LangChain ConversationSummaryBufferMemory).
-   - Tests whether preserving recent turns mitigates summary omission or stale-state
-     errors.
+   - Tests whether preserving recent turns mitigates summary omission, preserves
+     original relational wording, or harms the answer model by retaining salient
+     recent distractors.
 
-The comparison: all three conditions share the same prompt-based self-compression
-paradigm and the **same compression prompt template**. The only difference is
-whether compression is applied at all (full_history vs. the other two), and if so,
-whether the most recent turn is preserved verbatim or absorbed into the summary
-(one_shot vs. hybrid).
+The comparison: all three conditions share the same prompt-based
+self-compression paradigm and the **same compression prompt template**. The
+result is interpreted as a failure-mode diagnosis, not merely as an architecture
+leaderboard.
 
 ## Compression Prompt Template (shared across all conditions)
 
@@ -265,11 +272,18 @@ evidence positions — the best of both worlds.
    - Select the formal sample by quality gates plus stratification over hop count,
      evidence position, whether critical evidence is in the recent-turn window,
      and full-history token bin.
-   - 40 samples × 3 conditions = 120 inferences by default; if token bins are
-     highly informative and resources allow, expand to 60 samples × 3 conditions.
+   - Current completed baseline: 40 samples × 3 conditions = 120 inferences.
    - Save all artifacts under a fresh run directory.
 
-5. Supplementary checks (optional)
+5. Scale-up run before manual annotation
+   - Generate a larger 160-item pool.
+   - Run the same full-history gate.
+   - Select 80 formal items using scaled hop/profile targets.
+   - Run 80 samples × 3 conditions = 240 inferences.
+   - Stop after automatic summaries and parsed generations; do the next manual
+     mechanism annotation only after inspecting the larger result set.
+
+6. Supplementary checks (optional)
    - Budget sweep: 300 / 600 / 900 tokens on 10 samples.
    - Larger thinking budget sanity check.
    - Smaller summarizer model ablation.
@@ -319,25 +333,50 @@ avoid complex inline `ssh` commands. Use three levels of remote scripts:
   will stratify by history length rather than discarding natural variation. The
   older structured-output data should be treated as a future ablation candidate,
   not the main Layer 1 input.
+- 2026-06-13: **Formal Layer 1 run completed.** The 40-sample formal run
+  passed full-history gating and produced 120 final inferences. Results:
+  `full_history` 40/40, `one_shot_summary` 31/40, `hybrid_summary_recent`
+  36/40.
+- 2026-06-13: **Research framing updated.** The project no longer treats
+  "hybrid outperforms one-shot" as the main claim. The main question is now
+  whether self-compression failures are better explained by evidence position
+  or evidence-distractor interference. An 11-sample manual mechanism audit
+  produced the first taxonomy: compression effect, downstream error,
+  compression-vs-reasoning attribution, distractor volume, local competition
+  density, recent verbatim effect, hybrid benefit source, answer quality, and
+  audit confidence.
 
 ## Next Steps
 
-1. Regenerate smoke dialogues with the natural intermediate reasoning assistant
-   and inspect the preview for naturalness, no final-question/option/decomposition
-   leakage, and no structured-note formatting.
-2. If smoke passes, regenerate pilot/formal dialogues and audits with the same
-   prompt, preferably from an oversized candidate pool.
-3. Inspect natural token distribution and define short / medium / long bins for
-   formal stratified sampling.
-4. Build compression variants for smoke: full history, one-shot summary, and
-   hybrid summary + recent.
-5. Run smoke inference on Qwen3-8B, then proceed to pilot if parsing, budgets,
-   and manual audits are healthy.
+1. Run scale-up with the same pipeline and larger automatic sample size:
+   160-item pool -> full-history gate -> 80 selected formal items -> 240 final
+   inferences.
+2. Stop after automatic inference outputs and summaries. Do not manually
+   annotate until the larger result set identifies the next critical cases.
+3. Inspect automatic summaries by condition, evidence position, recent-evidence
+   flag, hop count, token bin, and pairwise OS/HY patterns.
+4. Select the next manual annotation subset from:
+   - one-shot wrong / hybrid right,
+   - one-shot right / hybrid wrong,
+   - both compressed wrong,
+   - surprising full-history failures, if any.
+5. Apply the current manual audit schema to that subset and update the mechanism
+   analysis.
+
+Suggested server command:
+
+```bash
+RUN_DATE=20260614 \
+RUN_ID=layer1_scale80_qwen3_8b_budget800_20260614 \
+FORMAL_POOL_SIZE=160 \
+FORMAL_TARGET_N=80 \
+bash scripts/remote/run_formal_pipeline.sh
+```
 
 ## Legacy Note
 
-The previous `docs/generator_spec.md` (6 difficulty modes, assistant behavior
-matrix, 40-sample phenomenom × difficulty allocation table) and
-`src/hard_smoke_generator.py` are archived as reference but no longer drive
-the experiment. The new design uses benchmark questions + LLM-generated natural
-intermediate reasoning dialogue + 3 architecture conditions.
+The previous hand-crafted synthetic design (6 difficulty modes, assistant
+behavior matrix, and fixed phenomenom × difficulty allocation) no longer drives
+the experiment and has been removed from the active repository. The current
+design uses benchmark questions + LLM-generated natural intermediate reasoning
+dialogue + 3 diagnostic history conditions.

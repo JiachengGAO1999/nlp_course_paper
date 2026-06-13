@@ -2,18 +2,19 @@
 
 ## Project
 
-This project studies how prompt-based dialogue-history compression architectures
-affect multi-turn reasoning QA reliability.
+This project studies failure modes of prompt-based self-compression for
+evidence-bearing multi-turn reasoning histories.
 
 The core research question is:
 
-> Under a fixed compressed-history budget, how do different compression
-> architectures preserve answer-critical evidence and final QA accuracy over
-> assistant-mediated multi-turn reasoning histories?
+> In prompt-based compression of evidence-bearing multi-turn histories, is
+> downstream failure better explained by evidence position or by interference
+> between answer-critical evidence and competing context?
 
-The study is about compression architecture, not prompt engineering. The
-compressed conditions use the same compression prompt template. What changes is
-how the dialogue history is routed into that prompt.
+The study is about compression architecture as a diagnostic intervention, not
+prompt engineering. The compressed conditions use the same compression prompt
+template. What changes is how the dialogue history is routed into that prompt,
+which lets us observe what compression omits, preserves, or overweights.
 
 ## Motivation
 
@@ -23,9 +24,11 @@ fit a fixed context budget. Two common prompt-based architectures are:
 - one-shot full-history summarization,
 - summary of older history plus recent turns kept verbatim.
 
-These architectures are common in agent compaction and conversation memory, but
-they are rarely compared directly on controlled multi-turn reasoning QA with
-known gold answers and supporting evidence.
+These architectures are common in agent compaction and conversation memory.
+Rather than treating them as a simple leaderboard, this project uses them to
+diagnose whether self-compression fails because evidence is far from the end of
+the context, because competing evidence and distractors are compressed together,
+or because verbatim recent retention preserves harmful distractors.
 
 ## Data Construction
 
@@ -85,9 +88,15 @@ The experiment compares three history conditions:
 | `hybrid_summary_recent` | Older turns summarized, recent turns kept verbatim |
 
 The two compressed conditions use the same compression prompt template and the
-same compressed-history budget. The independent variable is whether the history
-is compressed as one block or partitioned into older summary plus recent verbatim
-context.
+same compressed-history budget. The architecture comparison is interpreted as a
+mechanism probe:
+
+- if one-shot fails but hybrid succeeds, the missing piece may be compression
+  loss, focused older summarization, or helpful recent verbatim retention;
+- if one-shot succeeds but hybrid fails, recent verbatim retention may have
+  preserved a salient distractor;
+- if both compressed conditions fail, the sample may require exact value
+  preservation or contain dense competing context that both summaries mishandle.
 
 ## History-Length Strategy
 
@@ -106,14 +115,17 @@ histories.
 
 ## Sampling Plan
 
-Default formal setting:
+Current formal setting:
 
 - 40 samples x 3 conditions = 120 answer-model inferences.
 
-If token-length effects are central and resources allow:
+Scale-up setting before the next manual annotation pass:
 
-- 60 samples x 3 conditions = 180 answer-model inferences,
-- roughly balanced across short / medium / long history bins.
+- 80 samples x 3 conditions = 240 answer-model inferences,
+- generated from a larger 160-item pool,
+- same full-history gate, selection, compression, and inference flow,
+- stop after inference/automatic summaries; manual mechanism annotation is a
+  separate follow-up step.
 
 Formal sampling balances:
 
@@ -143,8 +155,23 @@ Intermediate compression-quality metrics:
 The key analysis is:
 
 - whether compressed conditions lose accuracy relative to full history,
-- whether hybrid summary + recent turns outperforms one-shot summarization,
-- whether the gap changes under stronger context pressure in longer histories.
+- whether one-shot failures are better explained by evidence omission,
+  distractor overweighting, relation-structure blur, or exact-value collapse,
+- whether hybrid recent retention helps by preserving answer-critical evidence
+  or hurts by preserving salient recent distractors,
+- whether high local competition density is a risk factor for
+  compression-induced failures.
+
+Manual mechanism audit uses this schema:
+
+- `compression_effect`: evidence omitted, distractor overweighted,
+  relation-structure blurred, exact-value collapse, recent-distractor
+  interference, or no major compression loss;
+- `downstream_error`: wrong entity/numeric/time-period anchor, exact value lost,
+  or recency distractor latch;
+- `compression_vs_reasoning`: compression-primary, reasoning-primary, or mixed;
+- distractor volume, local competition density, recent verbatim effect, hybrid
+  benefit source, answer quality, and audit confidence.
 
 ## Current Status
 
@@ -155,12 +182,13 @@ Completed:
 - Code has been refactored so reusable logic lives in `src/` and CLI entrypoints
   live in `scripts/`.
 - The dialogue style has been updated to natural intermediate reasoning.
-- Smoke dialogue generation has passed automatic audit with the new style.
+- Formal 40-sample Layer 1 run completed under Qwen3-8B.
+- Manual audit of 11 critical samples produced an initial failure-mechanism
+  taxonomy.
 
 Next:
 
-- generate an oversized dialogue candidate pool,
-- inspect token-length distribution and quality,
-- define short / medium / long bins,
-- select and freeze the formal Layer 1 sample,
-- build compression variants and run smoke inference.
+- run the same pipeline at larger scale, e.g. 160-item pool -> 80 selected
+  formal items -> 240 inferences,
+- stop after automatic inference summaries,
+- then decide which critical failures deserve the next manual annotation pass.

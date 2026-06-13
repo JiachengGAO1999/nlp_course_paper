@@ -15,6 +15,8 @@ def main(argv):
     parser.add_argument("--output", default=None)
     parser.add_argument("--audit", default=None)
     parser.add_argument("--preview", default=None)
+    parser.add_argument("--pool-size", type=int, default=None)
+    parser.add_argument("--hop-allocation-json", default=None)
     args = parser.parse_args(argv)
 
     config = load_yaml(args.config)

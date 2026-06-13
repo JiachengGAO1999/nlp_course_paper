@@ -8,6 +8,11 @@ MODEL="${MODEL:-qwen3-8b-budget}"
 RUN_DATE="${RUN_DATE:-20260613}"
 RUN_ID="${RUN_ID:-layer1_formal_qwen3_8b_budget800_${RUN_DATE}}"
 RUN_DIR="${RUN_DIR:-runs/${RUN_ID}}"
+FORMAL_POOL_SIZE="${FORMAL_POOL_SIZE:-}"
+FORMAL_TARGET_N="${FORMAL_TARGET_N:-}"
+FORMAL_POOL_HOP_ALLOCATION_JSON="${FORMAL_POOL_HOP_ALLOCATION_JSON:-}"
+FORMAL_HOP_ALLOCATION_JSON="${FORMAL_HOP_ALLOCATION_JSON:-}"
+FORMAL_PROFILE_ALLOCATION_JSON="${FORMAL_PROFILE_ALLOCATION_JSON:-}"
 
 cd "$PROJECT_DIR"
 mkdir -p "$RUN_DIR"/{logs,pool,formal,gate}
@@ -16,16 +21,26 @@ echo "[formal] project=$PROJECT_DIR"
 echo "[formal] python=$PYTHON"
 echo "[formal] model=$MODEL base_url=$BASE_URL"
 echo "[formal] run_dir=$RUN_DIR"
+echo "[formal] formal_pool_size=${FORMAL_POOL_SIZE:-config-default}"
+echo "[formal] formal_target_n=${FORMAL_TARGET_N:-config-default}"
 echo "[formal] started=$(date -Is)"
 
 cp configs/experiment.yaml "$RUN_DIR/config.snapshot.yaml"
 
 echo "[formal] 1/8 prepare formal pool"
+POOL_ARGS=()
+if [[ -n "$FORMAL_POOL_SIZE" ]]; then
+  POOL_ARGS+=(--pool-size "$FORMAL_POOL_SIZE")
+fi
+if [[ -n "$FORMAL_POOL_HOP_ALLOCATION_JSON" ]]; then
+  POOL_ARGS+=(--hop-allocation-json "$FORMAL_POOL_HOP_ALLOCATION_JSON")
+fi
 "$PYTHON" scripts/07_prepare_formal_pool.py \
   --config configs/experiment.yaml \
   --output "$RUN_DIR/pool/formal_pool_samples.jsonl" \
   --audit "$RUN_DIR/pool/formal_pool_sampling_audit.json" \
-  --preview "$RUN_DIR/pool/formal_pool_sampling_preview.md"
+  --preview "$RUN_DIR/pool/formal_pool_sampling_preview.md" \
+  "${POOL_ARGS[@]}"
 
 echo "[formal] 2/8 convert formal pool to MC"
 "$PYTHON" scripts/02_convert_musique_to_mc.py \
@@ -73,12 +88,23 @@ echo "[formal] 5/8 run full-history gate"
   --retries 3
 
 echo "[formal] 6/8 select formal set"
+SELECT_ARGS=()
+if [[ -n "$FORMAL_TARGET_N" ]]; then
+  SELECT_ARGS+=(--target-n "$FORMAL_TARGET_N")
+fi
+if [[ -n "$FORMAL_HOP_ALLOCATION_JSON" ]]; then
+  SELECT_ARGS+=(--hop-allocation-json "$FORMAL_HOP_ALLOCATION_JSON")
+fi
+if [[ -n "$FORMAL_PROFILE_ALLOCATION_JSON" ]]; then
+  SELECT_ARGS+=(--profile-allocation-json "$FORMAL_PROFILE_ALLOCATION_JSON")
+fi
 "$PYTHON" scripts/06_select_formal_set.py \
   --config configs/experiment.yaml \
   --dialogues "$RUN_DIR/pool/formal_pool_dialogues.jsonl" \
   --results "$RUN_DIR/gate/inference/generations.parsed.jsonl" \
   --output "$RUN_DIR/formal/formal_selected_dialogues.jsonl" \
-  --audit "$RUN_DIR/formal/formal_selection_audit.json"
+  --audit "$RUN_DIR/formal/formal_selection_audit.json" \
+  "${SELECT_ARGS[@]}"
 
 echo "[formal] 7/8 build formal variants"
 "$PYTHON" scripts/04_build_compressions.py \

@@ -61,7 +61,13 @@ runs/layer1_formal_qwen3_8b_budget800_20260613/
       generations.raw.jsonl
       generations.parsed.jsonl
       summary.json
+    11_critical_annotation.md  # optional manual mechanism audit
+    11_critical_audit.md       # optional rendered audit packet
 ```
+
+Manual annotation files are optional and should be added only after automatic
+inference results have been inspected and a critical subset has been selected.
+Scale-up runs should stop at `formal/inference/` before this step.
 
 ## Naming
 
@@ -81,6 +87,7 @@ layer1_formal_qwen3_8b_budget800_20260613
 
 ## Legacy Artifacts
 
-Older local artifacts may still exist under `data/layer1/` from early
-development. Treat them as legacy scratch outputs. New pipeline runs should use
-the run-root layout above.
+Older Layer 1 artifacts from early development have been moved under
+`runs/legacy_layer1_artifacts_20260613/`. New pipeline runs should use the
+run-root layout above. `data/` should contain only reusable benchmark/source
+data such as `data/raw/`.

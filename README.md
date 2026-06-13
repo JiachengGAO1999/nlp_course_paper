@@ -1,7 +1,9 @@
 # Compression Architecture for Multi-Turn Reasoning QA
 
-Course paper project: How do different prompt-based self-compression architectures
-affect downstream multi-turn reasoning QA reliability?
+Course paper project: When prompt-based self-compression is applied to
+evidence-bearing multi-turn histories, do downstream reasoning failures come
+mainly from evidence position or from interference between answer-critical
+evidence and competing context?
 
 ## Quick Start (planned)
 
@@ -25,6 +27,20 @@ python scripts/05_run_inference.py --config configs/experiment.yaml
 python scripts/06_summarize_results.py
 ```
 
+## Current Framing
+
+The comparison between one-shot and hybrid compression is used as a diagnostic
+intervention, not as a simple architecture leaderboard:
+
+- `full_history` checks whether the original dialogue is answerable.
+- `one_shot_summary` exposes failure modes of prompt-based self-compression.
+- `hybrid_summary_recent` tests what changes when recent context is retained
+  verbatim instead of compressed.
+
+The current manual audit focuses on whether failures are better explained by
+evidence omission, distractor overweighting, relation-structure blur, exact
+value collapse, or harmful recent-distractor retention.
+
 ## Conditions
 
 | Condition | Architecture |
@@ -33,8 +49,9 @@ python scripts/06_summarize_results.py
 | `one_shot_summary` | All turns → one compression call |
 | `hybrid_summary_recent` | Older turns compressed + recent turn verbatim |
 
-All compressed conditions share the same compression prompt template.
-The independent variable is compression architecture, not prompt phrasing.
+All compressed conditions share the same compression prompt template. The
+architecture comparison is therefore a controlled way to diagnose what
+compression preserves, drops, or overweights.
 
 ## Project Structure
 
@@ -59,6 +76,24 @@ runs/<run_id>/
 ```
 
 See [docs/artifact_layout.md](docs/artifact_layout.md) for the full layout.
+
+## Scale-Up Plan
+
+The next run should follow the same pipeline and stop after inference/automatic
+summaries, before any new manual mechanism annotation. For example, on the
+server:
+
+```bash
+RUN_DATE=20260614 \
+RUN_ID=layer1_scale80_qwen3_8b_budget800_20260614 \
+FORMAL_POOL_SIZE=160 \
+FORMAL_TARGET_N=80 \
+bash scripts/remote/run_formal_pipeline.sh
+```
+
+This generates a larger pool, runs the full-history gate, selects 80 formal
+items with scaled hop/profile targets, builds the three variants, and runs final
+inference. Manual annotation is a separate follow-up step.
 
 ## Design Documents
 

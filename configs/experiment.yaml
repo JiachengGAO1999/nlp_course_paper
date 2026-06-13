@@ -1,6 +1,6 @@
 experiment:
-  name: "compression_architecture_multi_turn_reasoning_qa"
-  run_id: "compression_architecture_qwen3_8b"
+  name: "self_compression_failure_modes_multi_turn_reasoning_qa"
+  run_id: "self_compression_failure_modes_qwen3_8b"
   language: "en"
   paper_language: "zh"
   data_source: "benchmark_qa_with_llm_generated_dialogue"
@@ -186,6 +186,16 @@ summarizer:
 audit:
   pilot_manual_audit_artifacts: 36
   formal_manual_audit_ratio: 0.10
+  mechanism_audit_schema:
+    - compression_effect
+    - downstream_error
+    - compression_vs_reasoning
+    - distractor_volume
+    - local_competition_density
+    - recent_verbatim_effect
+    - hybrid_benefit_source
+    - answer_correctness_quality
+    - audit_confidence
 
 prompt:
   final_answer_marker: "Final Answer:"
