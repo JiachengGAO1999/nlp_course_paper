@@ -190,7 +190,7 @@ def build_compression_variants(config, args):
     audit_dir = Path(config["paths"].get("audit_dir", data_dir / "layer1" / "audits"))
     input_path = Path(args.input or dialogue_dir / f"{args.split}_dialogues.jsonl")
     output_path = Path(args.output or output_dir / f"{args.split}_variants.jsonl")
-    audit_path = audit_dir / f"{args.split}_variant_audit.json"
+    audit_path = Path(args.audit or audit_dir / f"{args.split}_variant_audit.json")
 
     rows = read_jsonl(input_path)
     variants = []

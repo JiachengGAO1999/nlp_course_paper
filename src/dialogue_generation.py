@@ -360,8 +360,8 @@ def generate_dialogues(config, args):
         print(f"[{idx}/{len(rows)}] {row['source_id']}", flush=True)
         generated.append(build_dialogue(row, config, args, seed, assigned_profiles[row["source_id"]]))
 
-    audit_path = audit_dir / f"{args.split}_dialogue_audit.json"
-    preview_path = preview_dir / f"{args.split}_dialogue_preview.md"
+    audit_path = Path(args.audit or audit_dir / f"{args.split}_dialogue_audit.json")
+    preview_path = Path(args.preview or preview_dir / f"{args.split}_dialogue_preview.md")
     write_jsonl(output_path, generated)
     write_json(audit_path, summarize(generated))
     write_preview(preview_path, generated)

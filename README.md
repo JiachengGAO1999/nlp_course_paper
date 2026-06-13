@@ -47,19 +47,22 @@ scripts/          Pipeline scripts
 src/              Shared utilities
 ```
 
-Generated Layer 1 artifacts are organized as:
+`data/` is reserved for reusable benchmark/source data. Concrete experiment
+artifacts live under a single run directory:
 
 ```
-data/raw/                 Downloaded benchmark source files
-data/layer1/splits/       MuSiQue candidate, smoke, pilot, formal, spares splits
-data/layer1/mc/           Multiple-choice converted samples
-data/layer1/dialogues/    Generated multi-turn dialogue histories
-data/layer1/audits/       Sampling and MC conversion audit summaries
-data/layer1/previews/     Human-readable inspection previews
+runs/<run_id>/
+  pool/       Candidate pool, MC conversion, generated dialogues, audits
+  gate/       Full-history gate variants and inference results
+  formal/     Selected formal dialogues, variants, final inference results
+  logs/       Pipeline logs
 ```
+
+See [docs/artifact_layout.md](docs/artifact_layout.md) for the full layout.
 
 ## Design Documents
 
 - [docs/research_framework.md](docs/research_framework.md) — concise shareable research framework.
 - [GUIDE.md](GUIDE.md) — full project guide, decisions, and status.
 - [docs/experiment_design.md](docs/experiment_design.md) — detailed experiment design.
+- [docs/artifact_layout.md](docs/artifact_layout.md) — run/data artifact layout.

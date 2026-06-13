@@ -275,8 +275,8 @@ def convert_musique_to_mc(config, args):
         )
         converted.append(convert_item(row, generated, seed))
 
-    audit_path = audit_dir / f"{args.split}_mc_audit.json"
-    preview_path = preview_dir / f"{args.split}_mc_preview.md"
+    audit_path = Path(args.audit or audit_dir / f"{args.split}_mc_audit.json")
+    preview_path = Path(args.preview or preview_dir / f"{args.split}_mc_preview.md")
     write_jsonl(output_path, converted)
     write_json(audit_path, summarize(converted))
     write_preview(preview_path, converted)

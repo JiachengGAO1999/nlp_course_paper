@@ -15,6 +15,8 @@ def main(argv):
     parser.add_argument("--split", default="smoke", choices=["smoke", "pilot", "formal", "formal_pool", "spares"])
     parser.add_argument("--input", default=None)
     parser.add_argument("--output", default=None)
+    parser.add_argument("--audit", default=None)
+    parser.add_argument("--preview", default=None)
     parser.add_argument("--base-url", default=None)
     parser.add_argument("--model", default=None)
     parser.add_argument("--temperature", type=float, default=0.2)

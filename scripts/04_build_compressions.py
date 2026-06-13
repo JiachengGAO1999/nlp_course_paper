@@ -16,6 +16,7 @@ def main(argv):
     parser.add_argument("--conditions", default=None, help="Comma-separated subset, e.g. full_history")
     parser.add_argument("--input", default=None)
     parser.add_argument("--output", default=None)
+    parser.add_argument("--audit", default=None)
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--base-url", default=None)
     parser.add_argument("--model", default=None)
