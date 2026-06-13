@@ -66,11 +66,20 @@ def summarize_results(rows):
 
     by_condition = defaultdict(list)
     by_profile = defaultdict(list)
+    full_history_correct = {
+        row["source_id"]: row["is_correct"]
+        for row in rows
+        if row["condition"] == "full_history"
+    }
     errors = []
     for row in rows:
         by_condition[row["condition"]].append(row)
         by_profile[row.get("dialogue_profile")].append(row)
         if not row["is_correct"]:
+            if row["condition"] == "full_history" or full_history_correct.get(row["source_id"]) is False:
+                audit_label = "full_history_failure_requires_audit"
+            else:
+                audit_label = "compression_failure_candidate"
             errors.append(
                 {
                     "source_id": row["source_id"],
@@ -80,6 +89,7 @@ def summarize_results(rows):
                     "question": row["question"],
                     "dialogue_profile": row.get("dialogue_profile"),
                     "critical_evidence_in_recent_turn": row.get("critical_evidence_in_recent_turn"),
+                    "failure_audit_label": audit_label,
                 }
             )
     return {
