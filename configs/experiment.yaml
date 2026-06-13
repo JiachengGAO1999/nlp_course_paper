@@ -100,10 +100,10 @@ layer1:
       cross_turn: 10
       late: 10
     formal_pool:
-      far_early: 20
-      far_middle: 20
-      cross_turn: 20
-      late: 20
+      far_early: 50
+      far_middle: 50
+      cross_turn: 50
+      late: 50
     spares:
       far_early: 1
       far_middle: 1
