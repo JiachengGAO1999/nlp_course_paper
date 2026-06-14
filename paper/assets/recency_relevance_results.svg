@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="460" viewBox="0 0 980 460" role="img" aria-label="Accuracy results stratified by critical evidence recency">
+  <style>
+    text { font-family: Arial, sans-serif; fill: #101828; }
+    .title { font-size: 20px; font-weight: 700; }
+    .axis { stroke: #344054; stroke-width: 1.5; }
+    .grid { stroke: #d0d5dd; stroke-width: 1; }
+    .label { font-size: 14px; fill: #475467; }
+    .tick { font-size: 13px; fill: #475467; }
+    .bar1 { fill: #6172f3; }
+    .bar2 { fill: #f79009; }
+    .note { font-size: 15px; font-weight: 700; }
+  </style>
+  <rect x="18" y="18" width="944" height="424" fill="#ffffff" stroke="#e4e7ec" rx="12"/>
+  <text x="42" y="54" class="title">Aggregate accuracy hides a sign-reversing interaction</text>
+  <text x="42" y="82" class="label">Formal run: 100 samples, Qwen3-8B, compressed-history budget about 800 tokens</text>
+
+  <line x1="96" y1="360" x2="900" y2="360" class="axis"/>
+  <line x1="96" y1="110" x2="96" y2="360" class="axis"/>
+  <line x1="96" y1="310" x2="900" y2="310" class="grid"/>
+  <line x1="96" y1="260" x2="900" y2="260" class="grid"/>
+  <line x1="96" y1="210" x2="900" y2="210" class="grid"/>
+  <line x1="96" y1="160" x2="900" y2="160" class="grid"/>
+  <line x1="96" y1="110" x2="900" y2="110" class="grid"/>
+
+  <text x="55" y="365" class="tick">0%</text>
+  <text x="48" y="315" class="tick">20%</text>
+  <text x="48" y="265" class="tick">40%</text>
+  <text x="48" y="215" class="tick">60%</text>
+  <text x="48" y="165" class="tick">80%</text>
+  <text x="41" y="115" class="tick">100%</text>
+
+  <rect x="206" y="145" width="76" height="215" class="bar1"/>
+  <rect x="298" y="110" width="76" height="250" class="bar2"/>
+  <text x="214" y="136" class="note">86%</text>
+  <text x="306" y="101" class="note">100%</text>
+  <text x="172" y="390" class="label">Critical evidence recent</text>
+  <text x="229" y="414" class="label">n=50</text>
+
+  <rect x="594" y="150" width="76" height="210" class="bar1"/>
+  <rect x="686" y="180" width="76" height="180" class="bar2"/>
+  <text x="602" y="141" class="note">84%</text>
+  <text x="694" y="171" class="note">72%</text>
+  <text x="563" y="390" class="label">Critical evidence older</text>
+  <text x="622" y="414" class="label">n=50</text>
+
+  <rect x="792" y="80" width="18" height="18" class="bar1"/>
+  <text x="818" y="95" class="label">One-shot summary</text>
+  <rect x="792" y="108" width="18" height="18" class="bar2"/>
+  <text x="818" y="123" class="label">Hybrid summary + recent</text>
+
+  <text x="204" y="246" class="note">+14pp</text>
+  <text x="606" y="246" class="note">-12pp</text>
+  <text x="340" y="330" class="label">Hybrid protects recent evidence,</text>
+  <text x="340" y="352" class="label">but can starve older evidence of summary budget.</text>
+</svg>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" role="img" aria-label="Experiment pipeline for recency relevance tradeoff">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#344054"/>
+    </marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #101828; }
+      .box { fill: #ffffff; stroke: #667085; stroke-width: 1.5; rx: 8; }
+      .soft { fill: #eef4ff; stroke: #6172f3; }
+      .warn { fill: #fff6ed; stroke: #f79009; }
+      .good { fill: #ecfdf3; stroke: #12b76a; }
+      .title { font-size: 18px; font-weight: 700; }
+      .label { font-size: 15px; font-weight: 700; }
+      .small { font-size: 13px; fill: #475467; }
+      .arrow { stroke: #344054; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect x="18" y="18" width="944" height="324" fill="#f8fafc" stroke="#e4e7ec" rx="12"/>
+  <text x="40" y="52" class="title">Pipeline: from benchmark QA to compressed multi-turn reasoning</text>
+
+  <rect x="42" y="92" width="170" height="92" class="box soft"/>
+  <text x="62" y="122" class="label">MuSiQue QA</text>
+  <text x="62" y="148" class="small">gold answer</text>
+  <text x="62" y="168" class="small">2-4 evidence facts</text>
+
+  <rect x="272" y="92" width="178" height="92" class="box"/>
+  <text x="292" y="122" class="label">MC conversion</text>
+  <text x="292" y="148" class="small">gold + 3 distractors</text>
+  <text x="292" y="168" class="small">audited options</text>
+
+  <rect x="510" y="92" width="190" height="92" class="box warn"/>
+  <text x="530" y="122" class="label">Dialogue history</text>
+  <text x="530" y="148" class="small">6-8 turns</text>
+  <text x="530" y="168" class="small">evidence placed by position</text>
+
+  <rect x="760" y="72" width="160" height="62" class="box good"/>
+  <text x="780" y="100" class="label">Full history</text>
+  <text x="780" y="120" class="small">upper bound</text>
+
+  <rect x="760" y="154" width="160" height="62" class="box"/>
+  <text x="780" y="182" class="label">One-shot</text>
+  <text x="780" y="202" class="small">all turns summarized</text>
+
+  <rect x="760" y="236" width="160" height="62" class="box warn"/>
+  <text x="780" y="264" class="label">Hybrid recent</text>
+  <text x="780" y="284" class="small">old summary + recent</text>
+
+  <path d="M212 138 H272" class="arrow"/>
+  <path d="M450 138 H510" class="arrow"/>
+  <path d="M700 138 C728 108, 728 103, 760 103" class="arrow"/>
+  <path d="M700 138 C728 160, 728 184, 760 185" class="arrow"/>
+  <path d="M700 138 C728 220, 728 266, 760 267" class="arrow"/>
+
+  <text x="42" y="238" class="label">Controlled question</text>
+  <text x="42" y="264" class="small">Same answer model, same question/options, same answer prompt.</text>
+  <text x="42" y="286" class="small">Compressed conditions share one prompt template; only budget allocation changes.</text>
+  <text x="42" y="308" class="small">Primary diagnostic: does recent verbatim retention help only when relevance is recent?</text>
+</svg>

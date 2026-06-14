@@ -20,6 +20,26 @@ refs/
 *.tmp
 tmp/
 
+# Office temporary lock files
+~$*.docx
+~$*.pptx
+~$*.xlsx
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
 # OS/editor noise
 .DS_Store
 Thumbs.db
