@@ -341,6 +341,24 @@ avoid complex inline `ssh` commands. Use three levels of remote scripts:
 2. Personal recurring helpers: `~/bin`, project-agnostic.
 3. Project remote scripts: `scripts/remote/`, stable, in git.
 
+## Git Remote Synchronization
+
+This repository intentionally keeps two remotes:
+
+- `origin`: server-side repository on `sjtu-a800`.
+- `github`: GitHub sharing repository at
+  `https://github.com/JiachengGAO1999/nlp_course_paper.git`.
+
+Use explicit push commands rather than relying on the branch upstream:
+
+```bash
+git push origin main
+git push github main
+```
+
+This keeps the server workflow and the GitHub sharing copy synchronized without
+depending on whichever remote `main` currently tracks.
+
 ## Current Status
 
 - 2026-06-10: Design grilling completed, initial documents created.

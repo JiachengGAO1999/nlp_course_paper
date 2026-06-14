@@ -99,6 +99,17 @@ runs/<run_id>/
 
 See [docs/artifact_layout.md](docs/artifact_layout.md) for the full layout.
 
+## Git Remotes
+
+This repository uses explicit synchronization for the server and GitHub remotes:
+
+```bash
+git push origin main
+git push github main
+```
+
+`origin` is the server repository, and `github` is the GitHub sharing copy.
+
 ## Current Run
 
 The current main run is:
