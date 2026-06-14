@@ -17,7 +17,7 @@ def parse_answer(text):
 def run_answer_model(row, config, args):
     model_cfg = config["model"]
     extra_body = dict(model_cfg.get("extra_body") or {})
-    content, _, attempts = chat_with_retries(
+    content, _, attempts, response_message = chat_with_retries(
         base_url=args.base_url or model_cfg["base_url"],
         model=args.model or model_cfg["model"],
         messages=[{"role": "user", "content": row["input_text"]}],
@@ -28,8 +28,14 @@ def run_answer_model(row, config, args):
         retries=int(args.retries),
         enable_thinking=bool(extra_body.get("chat_template_kwargs", {}).get("enable_thinking", False)),
         extra_body=extra_body,
+        return_message=True,
     )
     parsed = parse_answer(content)
+    reasoning = (
+        response_message.get("reasoning")
+        or response_message.get("reasoning_content")
+        or response_message.get("reasoning_text")
+    )
     return {
         "source_id": row["source_id"],
         "split": row.get("split"),
@@ -46,6 +52,8 @@ def run_answer_model(row, config, args):
         "history_tokens": row.get("history_tokens"),
         "input_tokens_proxy": row.get("input_tokens_proxy"),
         "response_content": content,
+        "response_reasoning": reasoning,
+        "response_message": response_message,
         "attempts": attempts,
         "parse_ok": parsed is not None,
     }
