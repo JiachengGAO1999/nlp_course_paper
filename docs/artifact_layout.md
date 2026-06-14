@@ -1,5 +1,9 @@
 # Artifact Layout
 
+Role: filesystem contract for reusable data and per-run artifacts. This file
+does not define the research question or experimental protocol; see `GUIDE.md`
+and `docs/experiment_design.md` for those.
+
 This project separates reusable benchmark data from experiment-run artifacts.
 
 ## Top-Level Rule
@@ -26,7 +30,7 @@ These files are not committed.
 Example:
 
 ```text
-runs/layer1_formal_qwen3_8b_budget800_20260613/
+runs/layer1_scale100_qwen3_8b_budget800_20260614/
   config.snapshot.yaml
   logs/
     formal_pipeline_20260613.log
@@ -61,13 +65,13 @@ runs/layer1_formal_qwen3_8b_budget800_20260613/
       generations.raw.jsonl
       generations.parsed.jsonl
       summary.json
-    11_critical_annotation.md  # optional manual mechanism audit
-    11_critical_audit.md       # optional rendered audit packet
+    22_critical_annotation.md  # optional manual mechanism audit
+    critical_audit.md          # optional rendered audit packet
 ```
 
 Manual annotation files are optional and should be added only after automatic
 inference results have been inspected and a critical subset has been selected.
-Scale-up runs should stop at `formal/inference/` before this step.
+They explain critical failures; they are not the primary result artifact.
 
 ## Naming
 
@@ -83,6 +87,7 @@ Examples:
 layer1_smoke_qwen3_8b_budget800_20260613
 layer1_pilot_qwen3_8b_budget800_20260613
 layer1_formal_qwen3_8b_budget800_20260613
+layer1_scale100_qwen3_8b_budget800_20260614
 ```
 
 ## Legacy Artifacts

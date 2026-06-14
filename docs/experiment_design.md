@@ -1,21 +1,31 @@
 # Experiment Design
 
+Role: detailed experimental protocol. This file defines variables, data
+construction, conditions, prompts, model settings, evaluation, and run plan.
+`GUIDE.md` remains the project command document.
+
 ## Objective
 
-Diagnose how prompt-based self-compression fails on evidence-bearing multi-turn
-reasoning histories under a fixed compressed-history budget.
+Diagnose whether recency-based prompt compression creates a position-dependent
+trade-off in evidence-bearing multi-turn reasoning histories under a fixed
+compressed-history budget.
 
 ## Research Question
 
-Under a fixed compressed-history budget and a **shared compression prompt**, is
-downstream failure better explained by evidence position or by local
-interference between answer-critical evidence and competing context?
+Under a fixed compressed-history budget and a **shared compression prompt**,
+does retaining recent turns verbatim improve compressed multi-turn reasoning
+histories, or does it create a position-dependent trade-off between preserving
+recent evidence and losing older evidence?
 
-Secondary diagnostic question:
+Secondary mechanism questions:
 
-> When does hybrid summary + recent verbatim retention help by preserving
-> answer-critical evidence, and when does it hurt by preserving salient recent
-> distractors?
+- Does recent-turn retention help primarily when answer-critical evidence is
+  inside the recent window?
+- Does it hurt when answer-critical relevance lies in older history and the
+  older-summary budget becomes tighter?
+- When compressed systems fail, are critical errors driven by evidence omission,
+  distractor overweighting, recent-distractor interference, or downstream
+  reasoning mistakes?
 
 The study is about **compression architecture as a diagnostic intervention**,
 not prompt engineering. The prompt template is identical across compressed
@@ -24,12 +34,15 @@ partitioned into older summary plus recent verbatim context.
 
 ## Variables
 
-**Primary experimental factor**: Compression architecture (3 conditions, same
-compression prompt template for the two compressed conditions).
+**Primary experimental factor**: Compression architecture / budget allocation
+(3 conditions, same compression prompt template for the two compressed
+conditions).
 
 **Diagnostic factors**:
 - Evidence position profile (`far_early`, `far_middle`, `cross_turn`, `late`).
 - Whether critical evidence appears in the recent-turn window.
+- Relevance-recency alignment: whether answer-critical relevance is protected by
+  the hybrid verbatim window or must survive older-history summarization.
 - Local competition density between answer-critical evidence and distractors.
 - Distractor volume and recent distractor salience.
 - Full-history token bin as a context-pressure variable.
@@ -67,19 +80,16 @@ compression prompt template for the two compressed conditions).
 
 ### Benchmark
 
-A set of 40 multiple-choice reasoning QA items drawn from an existing
-community-validated benchmark. Candidates:
-
-- **HotpotQA** (multi-hop subset): gold supporting facts labeled, multi-hop
-  evidence chains.
-- **MuSiQue**: multi-hop reasoning, explicitly designed for evidence
-  composition.
-- **MMLU** (reasoning-heavy subsets): broad coverage, community-validated.
+Layer 1 uses MuSiQue-Ans. Each open-answer item is converted into a
+multiple-choice reasoning QA item using the benchmark gold answer plus three
+LLM-generated distractors, followed by automatic audits and manual spot checks.
 
 Selection criteria:
-- Multiple choice with unambiguous gold answers.
+- Unambiguous gold answer.
 - Requires combining 2+ distinct pieces of evidence.
-- Option-level diagnostics available or derivable.
+- Supporting evidence and reasoning-hop decomposition are available for
+  controlled dialogue construction.
+- Option-level diagnostics are available or derivable.
 
 ### Dialogue Generation
 
@@ -136,8 +146,10 @@ Evidence position profiles vary across samples:
 - `cross_turn`: evidence distributed across early, middle, late.
 - `late`: evidence concentrated in turns 5–7.
 
-Position diversity prevents the hybrid condition from mechanically winning
-by always having critical evidence in the recent turn.
+Position diversity prevents the hybrid condition from mechanically winning by
+always having critical evidence in the recent turn. It also lets the experiment
+measure whether recency-based retention helps only when recency aligns with
+answer-critical relevance.
 The pipeline explicitly records `critical_evidence_in_recent_turn`, defined
 under the configured hybrid recent-turn window, so analyses can separate genuine
 architecture effects from recency placement effects. The formal set is balanced
@@ -160,8 +172,9 @@ The formal sample is then selected to balance:
 - MC and dialogue quality audits.
 
 History length is analyzed as a context-pressure variable. The main analysis
-checks whether failures cluster around dense competing context and whether that
-interaction changes across short / medium / long histories.
+checks whether the recent-retention trade-off changes across short / medium /
+long histories and whether failure mechanisms cluster around dense competing
+context.
 
 ## Conditions
 
@@ -188,13 +201,18 @@ Final compressed history = summary + separator + recent turn.
 Budget: summary ≤550 tokens, recent turn ≤250 tokens. If the recent
 turn exceeds 300 tokens, keep only the most recent user message verbatim.
 
-Represents production compaction (Claude Agent SDK,
-LangChain `ConversationSummaryBufferMemory`). Tests whether preserving
+Represents a widely used recency-based compaction heuristic in agent and
+long-conversation systems: older history is summarized while the latest turn is
+kept in original form. Mature production systems may add rolling summaries,
+retrieval memory, file/state preservation, or agentic folding; this condition is
+a controlled diagnostic baseline for the recency heuristic, not a claim that all
+industrial systems use only this architecture. It tests whether preserving
 recent turns verbatim mitigates summary omission, preserves original relational
-wording, or instead amplifies recent distractors.
+wording, or instead amplifies recent distractors while reducing older-summary
+budget.
 
 The core comparison is diagnostic: given the same compression model, same prompt
-template, and same budget, what does partitioning preserve, drop, or overweight?
+template, and same budget, when does recency-biased partitioning help or hurt?
 
 ## Compression Prompt Template (shared across conditions 2–3)
 
@@ -262,6 +280,10 @@ Then give a brief explanation mentioning the key evidence from the context.
 - Compute answer-model output lengths (reasoning + content).
 - Label `insufficient_context_for_answer` when compressed artifact lacks
   required evidence.
+- Stratify accuracy by evidence-position profile and
+  `critical_evidence_in_recent_turn`.
+- Report architecture-by-position interaction rather than relying only on
+  aggregate condition accuracy.
 
 **Evidence retention (automatic pre-audit)**:
 - Span matching: for each benchmark evidence item, check whether its
@@ -270,7 +292,7 @@ Then give a brief explanation mentioning the key evidence from the context.
 - Full manual audit for pilot (12 samples × 2 compressed conditions = 24
   artifacts). Spot-check for formal.
 
-**Manual mechanism audit** (critical cases):
+**Manual mechanism audit** (critical cases, secondary analysis):
 - `compression_effect`: `evidence_omitted`, `distractor_overweighted`,
   `relation_structure_blurred`, `exact_value_collapse`,
   `recent_distractor_interference`, or `no_major_compression_loss`.
@@ -281,16 +303,17 @@ Then give a brief explanation mentioning the key evidence from the context.
 - Recent verbatim effect and hybrid benefit source.
 - Answer correctness quality and audit confidence.
 
-This audit is performed after inference. Scale-up runs should stop before this
-manual step so that sample selection for annotation can be driven by the new
-automatic results.
+This audit is performed after inference. Manual cases are selected from the
+objective compressed-condition error patterns, so the annotation explains the
+main accuracy interaction rather than determining the primary result.
 
 ## Run Plan
 
 ### 1. Benchmark Selection
 - Survey candidate benchmarks.
 - Choose one that fits the criteria.
-- Sample 50–60 items (40 formal + spares).
+- Build an oversized candidate pool so formal selection can balance hop count,
+  evidence position, recent-window evidence, token bins, and audit quality.
 
 ### 2. Smoke (2–4 samples)
 - Generate dialogues for 2–4 benchmark items.
@@ -310,35 +333,24 @@ automatic results.
   - No ambiguous gold answer.
   - Reasoning and content fields logged correctly.
 
-### 4. Formal (40 samples)
+### 4. Formal (100 samples)
 - Generate an oversized dialogue candidate pool, then freeze seed, config,
   prompt, stratified benchmark sample set, scorer, and analysis scripts.
 - Select the formal sample by quality gates plus balancing over hop count,
   evidence position, and full-history token bin.
-- 40 samples × 3 conditions = 120 inferences by default.
+- 100 samples × 3 conditions = 300 inferences in the current main run.
 - Save all artifacts.
 
-### 5. Scale-Up Before Manual Annotation
+### 5. Manual Critical-Case Annotation
 
-- Generate a larger candidate pool, e.g. 160 items.
-- Run the same full-history gate.
-- Select a larger formal set, e.g. 80 items, with scaled hop/profile targets.
-- Build the same three variants and run inference.
-- Stop after automatic summaries and parsed generations.
-- Do not manually annotate until the critical failure cases are selected from
-  the larger result set.
-
-Example server command:
-
-```bash
-RUN_DATE=20260614 \
-RUN_ID=layer1_scale80_qwen3_8b_budget800_20260614 \
-FORMAL_POOL_SIZE=160 \
-FORMAL_TARGET_N=80 \
-bash scripts/remote/run_formal_pipeline.sh
-```
+- Select critical compressed-condition cases after automatic inference results:
+  one-shot wrong / hybrid right, one-shot right / hybrid wrong, and both wrong.
+- Annotate failure mechanisms to explain the main position-dependent accuracy
+  interaction.
+- Treat annotation as mechanism evidence, not the primary result.
 
 ### 6. Supplementary (optional)
 - Budget sweep: 300 / 600 / 900 tokens on 10 samples.
 - Larger thinking budget sanity check.
 - Smaller summarizer model ablation.
+- Multi-model or Layer 2 validation of the recency-relevance trade-off.

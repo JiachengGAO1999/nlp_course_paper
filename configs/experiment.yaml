@@ -1,13 +1,13 @@
 experiment:
-  name: "self_compression_failure_modes_multi_turn_reasoning_qa"
-  run_id: "self_compression_failure_modes_qwen3_8b"
+  name: "recency_relevance_tradeoff_multi_turn_reasoning_compression"
+  run_id: "recency_relevance_tradeoff_qwen3_8b"
   language: "en"
   paper_language: "zh"
   data_source: "benchmark_qa_with_llm_generated_dialogue"
   random_seed: 42
 
 data:
-  formal_num_samples: 40
+  formal_num_samples: 100
   smoke_num_samples: 4
   pilot_num_samples: 12
   history_turns:
@@ -42,25 +42,25 @@ layer1:
     - "4hop1__93661_59747_211319_557671"
     # Gold answer is a type label rather than a concrete answer option.
     - "2hop__32887_578772"
-  candidate_pool_size: 60
-  formal_pool_size: 80
+  candidate_pool_size: 120
+  formal_pool_size: 200
   hop_allocation:
     2: 12
     3: 30
     4: 18
   formal_pool_hop_allocation:
-    2: 16
-    3: 40
-    4: 24
+    2: 40
+    3: 100
+    4: 60
   formal_hop_allocation:
-    2: 8
-    3: 20
-    4: 12
+    2: 20
+    3: 50
+    4: 30
   formal_profile_allocation:
-    far_early: 10
-    far_middle: 10
-    cross_turn: 10
-    late: 10
+    far_early: 25
+    far_middle: 25
+    cross_turn: 25
+    late: 25
   split_hop_allocation:
     smoke:
       2: 1
@@ -71,9 +71,9 @@ layer1:
       3: 6
       4: 4
     formal:
-      2: 8
-      3: 20
-      4: 12
+      2: 20
+      3: 50
+      4: 30
     spares:
       2: 1
       3: 2
@@ -95,10 +95,10 @@ layer1:
       cross_turn: 3
       late: 3
     formal:
-      far_early: 10
-      far_middle: 10
-      cross_turn: 10
-      late: 10
+      far_early: 25
+      far_middle: 25
+      cross_turn: 25
+      late: 25
     formal_pool:
       far_early: 50
       far_middle: 50
@@ -185,7 +185,8 @@ summarizer:
 
 audit:
   pilot_manual_audit_artifacts: 36
-  formal_manual_audit_ratio: 0.10
+  formal_manual_audit_cases: 22
+  formal_manual_audit_note: "Manual critical-case annotation is secondary mechanism evidence; primary result is accuracy stratified by evidence-position/recent-window alignment."
   mechanism_audit_schema:
     - compression_effect
     - downstream_error

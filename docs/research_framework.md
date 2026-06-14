@@ -1,20 +1,30 @@
 # Research Framework
 
+Role: concise shareable research narrative for collaborators. This file explains
+the motivation, core question, design sketch, and current findings. `GUIDE.md`
+remains the project command document.
+
 ## Project
 
-This project studies failure modes of prompt-based self-compression for
+Working title:
+
+> Keep Recent or Keep Relevant? Position-Dependent Trade-offs in Prompt-Based
+> Compression of Multi-Turn Reasoning Histories
+
+This project studies recency-biased prompt-based self-compression for
 evidence-bearing multi-turn reasoning histories.
 
 The core research question is:
 
-> In prompt-based compression of evidence-bearing multi-turn histories, is
-> downstream failure better explained by evidence position or by interference
-> between answer-critical evidence and competing context?
+> Under a fixed compressed-history budget, does retaining recent turns verbatim
+> improve compressed multi-turn reasoning histories, or does it create a
+> position-dependent trade-off between preserving recent evidence and losing
+> older evidence?
 
 The study is about compression architecture as a diagnostic intervention, not
 prompt engineering. The compressed conditions use the same compression prompt
-template. What changes is how the dialogue history is routed into that prompt,
-which lets us observe what compression omits, preserves, or overweights.
+template. What changes is how the fixed history budget is allocated: one global
+summary versus an older-history summary plus recent verbatim context.
 
 ## Motivation
 
@@ -24,11 +34,13 @@ fit a fixed context budget. Two common prompt-based architectures are:
 - one-shot full-history summarization,
 - summary of older history plus recent turns kept verbatim.
 
-These architectures are common in agent compaction and conversation memory.
-Rather than treating them as a simple leaderboard, this project uses them to
-diagnose whether self-compression fails because evidence is far from the end of
-the context, because competing evidence and distractors are compressed together,
-or because verbatim recent retention preserves harmful distractors.
+These architectures are common in agent compaction and conversation memory. The
+project does not claim that production systems use only these two forms; rather,
+it uses them as controlled baselines for a widely used recency heuristic. Recent
+turns are often treated as a proxy for relevance. In multi-turn reasoning,
+however, answer-critical evidence is not always recent. This creates a possible
+relevance-recency mismatch: hybrid memory may protect recent evidence while
+starving older evidence of summary budget.
 
 ## Data Construction
 
@@ -88,15 +100,16 @@ The experiment compares three history conditions:
 | `hybrid_summary_recent` | Older turns summarized, recent turns kept verbatim |
 
 The two compressed conditions use the same compression prompt template and the
-same compressed-history budget. The architecture comparison is interpreted as a
-mechanism probe:
+same compressed-history budget. The architecture comparison tests whether
+recent-turn retention is a generally better memory strategy or a recency-biased
+budget allocation with position-dependent costs:
 
-- if one-shot fails but hybrid succeeds, the missing piece may be compression
-  loss, focused older summarization, or helpful recent verbatim retention;
-- if one-shot succeeds but hybrid fails, recent verbatim retention may have
-  preserved a salient distractor;
-- if both compressed conditions fail, the sample may require exact value
-  preservation or contain dense competing context that both summaries mishandle.
+- if answer-critical evidence is in the recent window, hybrid can preserve it
+  verbatim while one-shot may omit or blur it during global compression;
+- if answer-critical evidence is older, hybrid must preserve it through a
+  smaller older-history summary and may regress relative to one-shot;
+- if recent turns contain salient distractors, hybrid can retain those
+  distractors verbatim and hurt downstream answering.
 
 ## History-Length Strategy
 
@@ -117,15 +130,17 @@ histories.
 
 Current formal setting:
 
-- 40 samples x 3 conditions = 120 answer-model inferences.
+- 100 samples x 3 conditions = 300 answer-model inferences,
+- generated from an oversized formal pool and filtered through the full-history
+  gate,
+- followed by a 22-case manual annotation of critical compressed-condition
+  failures.
 
-Scale-up setting before the next manual annotation pass:
+Optional follow-up settings:
 
-- 80 samples x 3 conditions = 240 answer-model inferences,
-- generated from a larger 160-item pool,
-- same full-history gate, selection, compression, and inference flow,
-- stop after inference/automatic summaries; manual mechanism annotation is a
-  separate follow-up step.
+- budget sweep across smaller/larger compressed-history targets,
+- multi-model validation,
+- Layer 2 external validation on a separate long-context MC subset.
 
 Formal sampling balances:
 
@@ -154,15 +169,15 @@ Intermediate compression-quality metrics:
 
 The key analysis is:
 
-- whether compressed conditions lose accuracy relative to full history,
-- whether one-shot failures are better explained by evidence omission,
-  distractor overweighting, relation-structure blur, or exact-value collapse,
-- whether hybrid recent retention helps by preserving answer-critical evidence
-  or hurts by preserving salient recent distractors,
-- whether high local competition density is a risk factor for
-  compression-induced failures.
+- whether aggregate accuracy hides architecture-by-position interactions,
+- whether hybrid recent-turn retention helps when answer-critical evidence is in
+  the recent window and hurts when relevance lies in older history,
+- whether the position-conditioned effect changes across evidence-position
+  profiles and history-length bins,
+- which mechanisms explain critical failures after the main accuracy analysis.
 
-Manual mechanism audit uses this schema:
+Manual mechanism audit is secondary evidence. It explains the main interaction
+rather than defining the primary result. The audit uses this schema:
 
 - `compression_effect`: evidence omitted, distractor overweighted,
   relation-structure blurred, exact-value collapse, recent-distractor
@@ -182,13 +197,18 @@ Completed:
 - Code has been refactored so reusable logic lives in `src/` and CLI entrypoints
   live in `scripts/`.
 - The dialogue style has been updated to natural intermediate reasoning.
-- Formal 40-sample Layer 1 run completed under Qwen3-8B.
-- Manual audit of 11 critical samples produced an initial failure-mechanism
-  taxonomy.
+- Formal 100-sample Layer 1 run completed under Qwen3-8B.
+- Main result: aggregate accuracy shows little architecture main effect
+  (`one_shot_summary` 85/100, `hybrid_summary_recent` 86/100), but stratification
+  by recent-window evidence reveals a sign-reversing trade-off:
+  hybrid +14pp when answer-critical evidence is recent and -12pp when it is not.
+- Manual audit of 22 critical samples supports a mechanism analysis: evidence
+  omission is the dominant critical failure mode, with distractor overweighting
+  and recent-distractor interference as meaningful secondary mechanisms.
 
 Next:
 
-- run the same pipeline at larger scale, e.g. 160-item pool -> 80 selected
-  formal items -> 240 inferences,
-- stop after automatic inference summaries,
-- then decide which critical failures deserve the next manual annotation pass.
+- write the result narrative around the recency-relevance trade-off,
+- use the 22-case annotation as secondary mechanism evidence,
+- optionally validate the interaction under additional budgets, models, or a
+  Layer 2 benchmark.

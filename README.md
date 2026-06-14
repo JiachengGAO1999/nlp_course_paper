@@ -1,9 +1,15 @@
-# Compression Architecture for Multi-Turn Reasoning QA
+# Keep Recent or Keep Relevant?
 
-Course paper project: When prompt-based self-compression is applied to
-evidence-bearing multi-turn histories, do downstream reasoning failures come
-mainly from evidence position or from interference between answer-critical
-evidence and competing context?
+Repository entry point. For the authoritative project framing, fixed decisions,
+status, and next actions, see [GUIDE.md](GUIDE.md).
+
+Position-dependent trade-offs in prompt-based compression of multi-turn
+reasoning histories.
+
+Course paper project: Under a fixed compressed-history budget, does retaining
+recent turns verbatim improve compressed multi-turn reasoning histories, or does
+it create a position-dependent trade-off between preserving recent evidence and
+losing older evidence?
 
 ## Quick Start (planned)
 
@@ -29,17 +35,33 @@ python scripts/06_summarize_results.py
 
 ## Current Framing
 
-The comparison between one-shot and hybrid compression is used as a diagnostic
-intervention, not as a simple architecture leaderboard:
+The comparison between one-shot and hybrid compression is used to diagnose a
+common recency-based history-compression heuristic, not to claim that one
+architecture is globally better:
 
 - `full_history` checks whether the original dialogue is answerable.
-- `one_shot_summary` exposes failure modes of prompt-based self-compression.
-- `hybrid_summary_recent` tests what changes when recent context is retained
-  verbatim instead of compressed.
+- `one_shot_summary` is a global compaction baseline: all turns are summarized
+  together under the shared prompt.
+- `hybrid_summary_recent` represents the common heuristic of compressing older
+  history while keeping the most recent turn verbatim.
 
-The current manual audit focuses on whether failures are better explained by
-evidence omission, distractor overweighting, relation-structure blur, exact
-value collapse, or harmful recent-distractor retention.
+The core finding from the 100-sample formal run is not an aggregate architecture
+main effect: `one_shot_summary` scores 85/100 and `hybrid_summary_recent` scores
+86/100. The useful signal appears after stratifying by whether answer-critical
+evidence falls in the recent-turn window:
+
+| Evidence placement | One-shot | Hybrid | Hybrid gap |
+| --- | ---: | ---: | ---: |
+| Critical evidence in recent window | 43/50 | 50/50 | +14pp |
+| Critical evidence outside recent window | 42/50 | 36/50 | -12pp |
+
+Recent-turn retention is therefore not a free lunch. It protects recent
+answer-critical evidence, but it also reallocates a fixed compression budget
+away from older history. Aggregate accuracy hides this sign-reversing trade-off.
+
+Manual annotation is used as secondary mechanism evidence: it explains whether
+critical failures involve evidence omission, distractor overweighting,
+recent-distractor interference, or downstream reasoning error.
 
 ## Conditions
 
@@ -50,8 +72,8 @@ value collapse, or harmful recent-distractor retention.
 | `hybrid_summary_recent` | Older turns compressed + recent turn verbatim |
 
 All compressed conditions share the same compression prompt template. The
-architecture comparison is therefore a controlled way to diagnose what
-compression preserves, drops, or overweights.
+architecture comparison is therefore a controlled way to diagnose how a
+recency-biased budget allocation preserves, drops, or overweights evidence.
 
 ## Project Structure
 
@@ -77,27 +99,22 @@ runs/<run_id>/
 
 See [docs/artifact_layout.md](docs/artifact_layout.md) for the full layout.
 
-## Scale-Up Plan
+## Current Run
 
-The next run should follow the same pipeline and stop after inference/automatic
-summaries, before any new manual mechanism annotation. For example, on the
-server:
+The current main run is:
 
-```bash
-RUN_DATE=20260614 \
-RUN_ID=layer1_scale80_qwen3_8b_budget800_20260614 \
-FORMAL_POOL_SIZE=160 \
-FORMAL_TARGET_N=80 \
-bash scripts/remote/run_formal_pipeline.sh
+```text
+runs/layer1_scale100_qwen3_8b_budget800_20260614/
 ```
 
-This generates a larger pool, runs the full-history gate, selects 80 formal
-items with scaled hop/profile targets, builds the three variants, and runs final
-inference. Manual annotation is a separate follow-up step.
+It contains 100 selected formal items, 300 final inferences, and a 22-case manual
+critical-error annotation. The next research step is to write the result
+narrative around the position-dependent recency trade-off and treat manual
+annotation as mechanism analysis.
 
 ## Design Documents
 
-- [docs/research_framework.md](docs/research_framework.md) — concise shareable research framework.
-- [GUIDE.md](GUIDE.md) — full project guide, decisions, and status.
-- [docs/experiment_design.md](docs/experiment_design.md) — detailed experiment design.
-- [docs/artifact_layout.md](docs/artifact_layout.md) — run/data artifact layout.
+- [GUIDE.md](GUIDE.md) — project command document; current framing, fixed decisions, status, and next actions.
+- [docs/research_framework.md](docs/research_framework.md) — concise shareable research narrative for collaborators.
+- [docs/experiment_design.md](docs/experiment_design.md) — detailed experimental protocol, variables, prompts, and evaluation plan.
+- [docs/artifact_layout.md](docs/artifact_layout.md) — run/data artifact layout and naming rules.

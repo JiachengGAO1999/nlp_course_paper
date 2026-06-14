@@ -2,11 +2,16 @@
 
 ## Project Positioning
 
+`GUIDE.md` is the project command document. It records the current research
+framing, fixed decisions, status, and next actions. Other documents may expand
+individual pieces, but if there is a narrative conflict, this guide is the
+source of truth.
+
 This course-paper project studies:
 
-> How prompt-based self-compression fails on evidence-bearing multi-turn
-> histories: is downstream failure better explained by evidence position, or by
-> interference between answer-critical evidence and competing context?
+> Whether recent-turn verbatim retention improves prompt-based compression of
+> multi-turn reasoning histories, or instead creates a position-dependent
+> trade-off between preserving recent evidence and losing older evidence.
 
 The project is aligned with the broader research direction:
 
@@ -14,38 +19,59 @@ The project is aligned with the broader research direction:
 
 The paper is **not** framed as prompt engineering. All compression conditions use
 the **same compression prompt template**. Compression architecture is used as a
-diagnostic intervention: the experiment asks what each architecture preserves,
-drops, or overweights under the same budget.
+diagnostic intervention: the experiment asks how a fixed history budget should
+be allocated, and whether using recency as a proxy for relevance hides a real
+trade-off.
 
 Working title:
 
-> 多轮交互历史自压缩中的证据混淆问题
+> Keep Recent or Keep Relevant? Position-Dependent Trade-offs in Prompt-Based
+> Compression of Multi-Turn Reasoning Histories
 
 ## Core Research Question
 
-Under a fixed compressed-history budget, when using LLM self-compression (the
-dominant production paradigm — Claude compaction, ChatGPT memory, LangChain
-ConversationSummaryMemory), are downstream failures mainly caused by positional
-evidence loss, or by interference between answer-critical evidence and competing
-context during compression?
+Under a fixed compressed-history budget, does retaining recent turns verbatim
+improve compressed multi-turn reasoning histories, or does it create a
+position-dependent trade-off between preserving recent evidence and losing older
+evidence?
 
-The architecture comparison is a mechanism probe:
+The architecture comparison tests a common recency-based compression heuristic:
 
 - `full_history` verifies that the original dialogue is answerable.
-- `one_shot_summary` exposes prompt-based self-compression failure modes.
-- `hybrid_summary_recent` tests what changes when recent context is kept
-  verbatim rather than absorbed into the summary.
+- `one_shot_summary` is the global compaction baseline: all turns are summarized
+  together.
+- `hybrid_summary_recent` keeps the most recent turn verbatim and compresses
+  older history, representing a widely used recency-biased memory heuristic.
+
+The central issue is relevance-recency mismatch. Production systems often treat
+recent context as a proxy for relevant context, but multi-turn reasoning may
+require evidence from earlier turns.
+
+## Document Roles
+
+- `GUIDE.md`: project command document; current framing, fixed decisions,
+  progress, and next actions.
+- `README.md`: repository entry point; short orientation, current main result,
+  runnable pipeline commands, and links.
+- `docs/research_framework.md`: concise shareable research narrative for
+  collaborators; motivation, RQ, design sketch, and current findings.
+- `docs/experiment_design.md`: detailed experimental protocol; variables,
+  prompts, conditions, evaluation, and run plan.
+- `docs/artifact_layout.md`: artifact and directory layout; where reusable data
+  and run-specific outputs belong.
+- `configs/experiment.yaml`: executable experiment defaults; it should reflect
+  the current main run settings unless an explicit ablation overrides them.
 
 ## Research Gap
 
 Existing work (Jha et al. 2024 ICML, Li et al. 2025 NAACL survey) compares
 compression *method families* (token pruning vs. extractive vs. abstractive).
-Less is known about how production-style prompt-based self-compression fails
-inside assistant-mediated reasoning histories. A simple "hybrid beats
-one-shot" result is not the core contribution; the contribution is a controlled
-diagnosis of whether failures come from evidence omission, distractor
-overweighting, relation-structure blur, exact-value collapse, or harmful recent
-distractor retention.
+Less is known about how production-style prompt-based self-compression behaves
+inside assistant-mediated reasoning histories. A simple "hybrid beats one-shot"
+result is not the core contribution. The contribution is showing that aggregate
+accuracy can hide a sign-reversing architecture-by-position interaction:
+recent-turn retention helps when relevance is recent and hurts when relevance is
+older.
 
 This course paper fills that modest but real gap.
 
@@ -72,10 +98,9 @@ This course paper fills that modest but real gap.
 - Main inference setting: thinking enabled with fixed budgeted thinking.
 - Main answer format: `Final Answer: <A/B/C/D>` plus brief evidence-based explanation.
 - No step-by-step or explicit verification instruction in the answer prompt.
-- Completed formal run: 40 samples × 3 conditions = 120 inferences.
-- Next scale-up target: 80 selected samples × 3 conditions = 240 inferences,
-  generated from a 160-item pool, stopping before the next manual mechanism
-  annotation pass.
+- Completed main formal run: 100 samples × 3 conditions = 300 inferences.
+- Manual critical-case annotation: 22 compressed-condition failures, used as
+  secondary mechanism evidence rather than the primary result.
 
 ## Budgets
 
@@ -91,7 +116,7 @@ The compressed-history budget is not the physical model context length. It is
 the maximum token budget allocated to the retained history portion after
 compression.
 
-Main planned setting:
+Main setting:
 
 - Full History length range: observed after generation, then used for candidate
   filtering rather than fixed before dialogue construction.
@@ -132,21 +157,21 @@ varies:
    - Budget allocation: summary ≤550 tokens, recent turn ≤250 tokens.
    - If the most recent turn exceeds 300 tokens, keep only the most recent user
      message verbatim and allocate the remainder to the summary.
-   - Represents the production-standard pattern (Claude Agent SDK compaction,
-     LangChain ConversationSummaryBufferMemory).
-   - Tests whether preserving recent turns mitigates summary omission, preserves
-     original relational wording, or harms the answer model by retaining salient
-     recent distractors.
+   - Represents a common recency-biased pattern in agent and long-conversation
+     memory systems.
+   - Tests whether recency-biased retention helps when answer-critical evidence
+     is recent and hurts when relevant evidence must survive older-history
+     summarization.
 
 The comparison: all three conditions share the same prompt-based
 self-compression paradigm and the **same compression prompt template**. The
-result is interpreted as a failure-mode diagnosis, not merely as an architecture
-leaderboard.
+result is interpreted as a controlled diagnosis of recency-biased budget
+allocation, not as a global architecture leaderboard.
 
-## Compression Prompt Template (shared across all conditions)
+## Compression Prompt Template (shared across compressed conditions)
 
 The compression prompt is fixed. Only the dialogue text fed into it differs
-(full history vs. older-only vs. user-only):
+(full dialogue for one-shot vs. older turns for hybrid):
 
 ```
 You are compressing a multi-turn dialogue history for later use in answering
@@ -217,10 +242,12 @@ For each benchmark QA item, generate a 6–8 turn dialogue:
   evidence as source notes, not as benchmark subquestions.
 - Evidence positions vary across samples to avoid mechanical recency-bias wins
   for the hybrid condition. The pipeline records whether answer-critical evidence
-  falls in the recent-turn window preserved verbatim by the hybrid condition.
+  falls in the recent-turn window preserved verbatim by the hybrid condition, so
+  analyses can distinguish aggregate architecture effects from
+  relevance-recency alignment.
 
 This gives: community-validated questions + natural LLM dialogue + controlled
-evidence positions — the best of both worlds.
+evidence positions.
 
 ## Dependent Variables
 
@@ -238,13 +265,16 @@ evidence positions — the best of both worlds.
 - Full-history token bin (short / medium / long), used to analyze whether
   compression architecture effects change under different context-pressure
   regimes.
+- `critical_evidence_in_recent_turn`, used for the primary
+  architecture-by-position analysis.
 
 ## Experiment Progression
 
 1. Benchmark selection
    - Survey candidate benchmarks.
    - Choose one based on format fit, evidence structure, and availability.
-   - Sample 50–60 items (40 formal + spares for pilot/smoke).
+   - Build an oversized candidate pool so formal selection can balance hop
+     count, evidence position, recent-window evidence, and token bins.
 
 2. Minimal closed loop (2–4 samples)
    - Generate dialogues for 2–4 benchmark items.
@@ -272,21 +302,22 @@ evidence positions — the best of both worlds.
    - Select the formal sample by quality gates plus stratification over hop count,
      evidence position, whether critical evidence is in the recent-turn window,
      and full-history token bin.
-   - Current completed baseline: 40 samples × 3 conditions = 120 inferences.
+   - Current completed main run: 100 samples × 3 conditions = 300 inferences.
    - Save all artifacts under a fresh run directory.
 
-5. Scale-up run before manual annotation
-   - Generate a larger 160-item pool.
-   - Run the same full-history gate.
-   - Select 80 formal items using scaled hop/profile targets.
-   - Run 80 samples × 3 conditions = 240 inferences.
-   - Stop after automatic summaries and parsed generations; do the next manual
-     mechanism annotation only after inspecting the larger result set.
+5. Critical-case manual annotation
+   - Select critical cases after inference: one-shot wrong / hybrid right,
+     one-shot right / hybrid wrong, and both compressed wrong.
+   - Annotate mechanism labels such as evidence omission, distractor
+     overweighting, recent distractor interference, and reasoning-primary error.
+   - Use annotation as secondary mechanism evidence to explain the objective
+     accuracy interaction.
 
 6. Supplementary checks (optional)
    - Budget sweep: 300 / 600 / 900 tokens on 10 samples.
    - Larger thinking budget sanity check.
    - Smaller summarizer model ablation.
+   - Multi-model or Layer 2 validation of the recency-relevance trade-off.
 
 ## Artifact Policy
 
@@ -338,40 +369,34 @@ avoid complex inline `ssh` commands. Use three levels of remote scripts:
   `full_history` 40/40, `one_shot_summary` 31/40, `hybrid_summary_recent`
   36/40.
 - 2026-06-13: **Research framing updated.** The project no longer treats
-  "hybrid outperforms one-shot" as the main claim. The main question is now
-  whether self-compression failures are better explained by evidence position
-  or evidence-distractor interference. An 11-sample manual mechanism audit
-  produced the first taxonomy: compression effect, downstream error,
+  "hybrid outperforms one-shot" as the main claim. The intermediate framing
+  asked whether self-compression failures are better explained by evidence
+  position or evidence-distractor interference. An 11-sample manual mechanism
+  audit produced the first taxonomy: compression effect, downstream error,
   compression-vs-reasoning attribution, distractor volume, local competition
   density, recent verbatim effect, hybrid benefit source, answer quality, and
   audit confidence.
+- 2026-06-14: **Scale100 formal run completed and framing refined.** The current
+  main run contains 100 selected formal samples and 300 final inferences:
+  `full_history` 100/100, `one_shot_summary` 85/100,
+  `hybrid_summary_recent` 86/100. The aggregate result shows little architecture
+  main effect, but stratification by `critical_evidence_in_recent_turn` reveals a
+  sign-reversing trade-off: hybrid +14pp when answer-critical evidence is recent
+  and -12pp when it is not. The primary RQ is now the recency-relevance trade-off;
+  the 22-case manual annotation is secondary mechanism evidence.
 
 ## Next Steps
 
-1. Run scale-up with the same pipeline and larger automatic sample size:
-   160-item pool -> full-history gate -> 80 selected formal items -> 240 final
-   inferences.
-2. Stop after automatic inference outputs and summaries. Do not manually
-   annotate until the larger result set identifies the next critical cases.
-3. Inspect automatic summaries by condition, evidence position, recent-evidence
-   flag, hop count, token bin, and pairwise OS/HY patterns.
-4. Select the next manual annotation subset from:
-   - one-shot wrong / hybrid right,
-   - one-shot right / hybrid wrong,
-   - both compressed wrong,
-   - surprising full-history failures, if any.
-5. Apply the current manual audit schema to that subset and update the mechanism
-   analysis.
-
-Suggested server command:
-
-```bash
-RUN_DATE=20260614 \
-RUN_ID=layer1_scale80_qwen3_8b_budget800_20260614 \
-FORMAL_POOL_SIZE=160 \
-FORMAL_TARGET_N=80 \
-bash scripts/remote/run_formal_pipeline.sh
-```
+1. Write the results narrative around aggregate masking and the
+   architecture-by-position interaction.
+2. Use the 22-case annotation to explain mechanisms: older-evidence omission,
+   distractor overweighting, recent-distractor interference, and
+   reasoning-primary errors.
+3. Decide whether to add supplementary validation: budget sweep, multi-model
+   check, or Layer 2 external validation.
+4. Draft the Chinese paper around the claim: recent-turn retention is useful but
+   conditional, because it is a recency-biased allocation of a fixed context
+   budget.
 
 ## Legacy Note
 
