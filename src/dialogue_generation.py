@@ -30,6 +30,25 @@ def expand_profile_allocation(allocation):
     return profiles
 
 
+def scale_profile_allocation(allocation, target_total):
+    current_total = sum(int(v) for v in allocation.values())
+    if current_total <= 0:
+        raise ValueError("Cannot scale an empty profile allocation")
+    if current_total == target_total:
+        return dict(allocation)
+    scaled = {}
+    remainders = []
+    for profile, count in allocation.items():
+        exact = int(count) * target_total / current_total
+        base = int(exact)
+        scaled[profile] = base
+        remainders.append((exact - base, profile))
+    remaining = target_total - sum(scaled.values())
+    for _, profile in sorted(remainders, reverse=True)[:remaining]:
+        scaled[profile] += 1
+    return scaled
+
+
 def assign_profiles(rows, config, split, seed):
     profiles = config.get("layer1", {}).get("evidence_position_profiles") or PROFILE_NAMES
     split_allocations = config.get("layer1", {}).get("split_profile_allocation") or {}
@@ -37,12 +56,8 @@ def assign_profiles(rows, config, split, seed):
     if not allocation:
         return {row["source_id"]: stable_profile(seed, row["source_id"], profiles) for row in rows}
 
+    allocation = scale_profile_allocation(allocation, len(rows))
     assigned = expand_profile_allocation(allocation)
-    if len(assigned) != len(rows):
-        raise ValueError(
-            f"Profile allocation for split '{split}' has {len(assigned)} items, "
-            f"but input contains {len(rows)} rows."
-        )
     unknown = sorted(set(assigned) - set(profiles))
     if unknown:
         raise ValueError(f"Unknown profile(s) in split '{split}': {unknown}")
