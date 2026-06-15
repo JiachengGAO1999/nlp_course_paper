@@ -98,6 +98,8 @@ runs/<run_id>/
 ```
 
 See [docs/artifact_layout.md](docs/artifact_layout.md) for the full layout.
+For remote formal-run launch, monitoring, pulling, and verification commands,
+see [docs/formal_runbook.md](docs/formal_runbook.md).
 
 ## Git Remotes
 
@@ -129,3 +131,4 @@ annotation as mechanism analysis.
 - [docs/research_framework.md](docs/research_framework.md) — concise shareable research narrative for collaborators.
 - [docs/experiment_design.md](docs/experiment_design.md) — detailed experimental protocol, variables, prompts, and evaluation plan.
 - [docs/artifact_layout.md](docs/artifact_layout.md) — run/data artifact layout and naming rules.
+- [docs/formal_runbook.md](docs/formal_runbook.md) — reproducible remote formal-run procedure.

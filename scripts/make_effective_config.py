@@ -64,6 +64,22 @@ def make_effective_config(config, args):
     data = effective.setdefault("data", {})
     overrides = {}
 
+    if args.model:
+        effective.setdefault("model", {})["model"] = args.model
+        effective.setdefault("summarizer", {})["model"] = args.model
+        overrides["model"] = args.model
+    if args.base_url:
+        effective.setdefault("model", {})["base_url"] = args.base_url
+        effective.setdefault("summarizer", {})["base_url"] = args.base_url
+        overrides["base_url"] = args.base_url
+    if args.server_version:
+        effective.setdefault("model", {})["server_version"] = args.server_version
+        overrides["server_version"] = args.server_version
+    if args.model_extra_body_json is not None:
+        extra_body = json.loads(args.model_extra_body_json) if args.model_extra_body_json else {}
+        effective.setdefault("model", {})["extra_body"] = extra_body
+        overrides["model_extra_body"] = extra_body
+
     pool_size = int(args.formal_pool_size) if args.formal_pool_size is not None else None
     target_n = int(args.formal_target_n) if args.formal_target_n is not None else None
 
@@ -144,6 +160,10 @@ def main(argv):
     parser.add_argument("--formal-pool-hop-allocation-json", default=None)
     parser.add_argument("--formal-hop-allocation-json", default=None)
     parser.add_argument("--formal-profile-allocation-json", default=None)
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--base-url", default=None)
+    parser.add_argument("--server-version", default=None)
+    parser.add_argument("--model-extra-body-json", default=None)
     args = parser.parse_args(argv)
 
     config = load_yaml(args.config)

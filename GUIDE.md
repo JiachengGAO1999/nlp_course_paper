@@ -59,6 +59,8 @@ require evidence from earlier turns.
   prompts, conditions, evaluation, and run plan.
 - `docs/artifact_layout.md`: artifact and directory layout; where reusable data
   and run-specific outputs belong.
+- `docs/formal_runbook.md`: reproducible operating procedure for launching,
+  monitoring, pulling, and verifying remote formal runs.
 - `configs/experiment.yaml`: executable experiment defaults; it should reflect
   the current main run settings unless an explicit ablation overrides them.
 
@@ -340,6 +342,10 @@ avoid complex inline `ssh` commands. Use three levels of remote scripts:
 1. One-off scripts: `/tmp`, self-cleaning, not in git.
 2. Personal recurring helpers: `~/bin`, project-agnostic.
 3. Project remote scripts: `scripts/remote/`, stable, in git.
+
+For concrete formal-run commands, including Qwen/Gemma 500-case launch
+templates, monitoring, `scp` pull, and reasoning-field verification, use
+`docs/formal_runbook.md`.
 
 ## Git Remote Synchronization
 

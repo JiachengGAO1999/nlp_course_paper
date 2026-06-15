@@ -13,6 +13,8 @@ FORMAL_TARGET_N="${FORMAL_TARGET_N:-}"
 FORMAL_POOL_HOP_ALLOCATION_JSON="${FORMAL_POOL_HOP_ALLOCATION_JSON:-}"
 FORMAL_HOP_ALLOCATION_JSON="${FORMAL_HOP_ALLOCATION_JSON:-}"
 FORMAL_PROFILE_ALLOCATION_JSON="${FORMAL_PROFILE_ALLOCATION_JSON:-}"
+MODEL_EXTRA_BODY_JSON="${MODEL_EXTRA_BODY_JSON:-}"
+SERVER_VERSION="${SERVER_VERSION:-}"
 
 cd "$PROJECT_DIR"
 mkdir -p "$RUN_DIR"/{logs,pool,formal,gate}
@@ -42,6 +44,14 @@ if [[ -n "$FORMAL_HOP_ALLOCATION_JSON" ]]; then
 fi
 if [[ -n "$FORMAL_PROFILE_ALLOCATION_JSON" ]]; then
   EFFECTIVE_ARGS+=(--formal-profile-allocation-json "$FORMAL_PROFILE_ALLOCATION_JSON")
+fi
+EFFECTIVE_ARGS+=(--model "$MODEL")
+EFFECTIVE_ARGS+=(--base-url "$BASE_URL")
+if [[ -n "$SERVER_VERSION" ]]; then
+  EFFECTIVE_ARGS+=(--server-version "$SERVER_VERSION")
+fi
+if [[ -n "$MODEL_EXTRA_BODY_JSON" ]]; then
+  EFFECTIVE_ARGS+=(--model-extra-body-json "$MODEL_EXTRA_BODY_JSON")
 fi
 "$PYTHON" scripts/make_effective_config.py \
   --config configs/experiment.yaml \
