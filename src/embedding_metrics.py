@@ -82,6 +82,11 @@ def answer_text(gen_row):
     return (gen_row.get("response_content") or "").strip()
 
 
+def reasoning_text(gen_row):
+    """Model's reasoning trace."""
+    return (gen_row.get("response_reasoning") or "").strip()
+
+
 def compute_evidence_similarity(evidence, compressed_text, model):
     """Cosine similarity between the full evidence text and compressed history."""
     if not evidence.strip() or not compressed_text.strip():
@@ -97,6 +102,15 @@ def compute_answer_fidelity(fh_answer, comp_answer, model):
         return None
     fh_emb = _embed(fh_answer, model)
     comp_emb = _embed(comp_answer, model)
+    return _cos_sim(fh_emb, comp_emb)
+
+
+def compute_reasoning_similarity(fh_reasoning, comp_reasoning, model):
+    """Cosine similarity between full_history reasoning and compressed-condition reasoning."""
+    if not fh_reasoning.strip() or not comp_reasoning.strip():
+        return None
+    fh_emb = _embed(fh_reasoning, model)
+    comp_emb = _embed(comp_reasoning, model)
     return _cos_sim(fh_emb, comp_emb)
 
 
@@ -141,6 +155,7 @@ def compute_all(dialogue_path, variant_path, generation_path, output_path, outpu
         distractors = distractor_texts(d)
         fh_gen = generations.get(sid, {}).get("full_history")
         fh_ans = answer_text(fh_gen) if fh_gen else ""
+        fh_reasoning = reasoning_text(fh_gen) if fh_gen else ""
 
         sv = variants.get(sid, {})
         sg = generations.get(sid, {})
@@ -153,9 +168,11 @@ def compute_all(dialogue_path, variant_path, generation_path, output_path, outpu
 
             comp_text = (v.get("history_text") or "").strip()
             comp_ans = answer_text(g) if g else ""
+            comp_reasoning = reasoning_text(g) if g else ""
 
             ev_sim = compute_evidence_similarity(evidence, comp_text, model)
             ans_fid = compute_answer_fidelity(fh_ans, comp_ans, model)
+            reason_sim = compute_reasoning_similarity(fh_reasoning, comp_reasoning, model)
             gold_sim, dist_ratio = compute_distractor_salience(comp_text, gold, distractors, model)
 
             rows.append({
@@ -171,6 +188,7 @@ def compute_all(dialogue_path, variant_path, generation_path, output_path, outpu
                 "gold": d.get("gold"),
                 "evidence_similarity": ev_sim,
                 "answer_fidelity": ans_fid,
+                "reasoning_similarity": reason_sim,
                 "gold_distractor_salience_ratio": dist_ratio,
                 "gold_similarity": gold_sim,
             })
@@ -193,6 +211,7 @@ def compute_all(dialogue_path, variant_path, generation_path, output_path, outpu
     for key, group in sorted(groups.items()):
         ev_sims = [r["evidence_similarity"] for r in group if r["evidence_similarity"] is not None]
         ans_fids = [r["answer_fidelity"] for r in group if r["answer_fidelity"] is not None]
+        reason_sims = [r["reasoning_similarity"] for r in group if r["reasoning_similarity"] is not None]
         ratios = [r["gold_distractor_salience_ratio"] for r in group if r["gold_distractor_salience_ratio"] is not None]
         gold_sims = [r["gold_similarity"] for r in group if r["gold_similarity"] is not None]
         acc = sum(1 for r in group if r["is_correct"]) / len(group) if group else None
@@ -202,6 +221,7 @@ def compute_all(dialogue_path, variant_path, generation_path, output_path, outpu
             "accuracy": acc,
             "evidence_similarity_mean": sum(ev_sims) / len(ev_sims) if ev_sims else None,
             "answer_fidelity_mean": sum(ans_fids) / len(ans_fids) if ans_fids else None,
+            "reasoning_similarity_mean": sum(reason_sims) / len(reason_sims) if reason_sims else None,
             "gold_distractor_ratio_mean": sum(ratios) / len(ratios) if ratios else None,
             "gold_similarity_mean": sum(gold_sims) / len(gold_sims) if gold_sims else None,
         }
