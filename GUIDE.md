@@ -368,59 +368,64 @@ depending on whichever remote `main` currently tracks.
 ## Current Status
 
 - 2026-06-10: Design grilling completed, initial documents created.
-- 2026-06-12: Basic smoke (4 samples) completed. 95% overall accuracy.
-  Revealed ceiling effect and over-redundant assistant messages.
-- 2026-06-12: Hard smoke v2 generator implemented (6 hand-written samples),
-  but design was over-engineered (assistant behavior matrix, difficulty modes,
-  40-sample allocation table).
-- 2026-06-12: **Design reset.** Shifted from hand-crafted synthetic samples to
-  benchmark + LLM-generated dialogue. Simplified to 3 architecture conditions
-  within the prompt-based self-compression paradigm. Removed assistant behavior
-  confounds, difficulty mode layering, and hand-written sample functions.
+- 2026-06-12: Basic smoke (4 samples) completed. Design reset from hand-crafted
+  synthetic to benchmark + LLM-generated dialogue. Simplified to 3 architecture
+  conditions.
 - 2026-06-13: MuSiQue-Ans selected as Layer 1 benchmark. MC conversion, dialogue
-  generation, and audit pipeline built. An initial 40-formal-dialogue set was
-  generated with the older structured-note assistant style.
-- 2026-06-13: **Assistant prompt update.** Changed from "structured note
-  organizer" to natural intermediate reasoning. The assistant may reason over
-  visible notes, but does not see the held-out final question/options or use a
-  final-answer format. Token ranges will be selected after observing generated
-  dialogue distributions. If the distribution is dispersed, the formal design
-  will stratify by history length rather than discarding natural variation. The
-  older structured-output data should be treated as a future ablation candidate,
-  not the main Layer 1 input.
-- 2026-06-13: **Formal Layer 1 run completed.** The 40-sample formal run
-  passed full-history gating and produced 120 final inferences. Results:
-  `full_history` 40/40, `one_shot_summary` 31/40, `hybrid_summary_recent`
-  36/40.
-- 2026-06-13: **Research framing updated.** The project no longer treats
-  "hybrid outperforms one-shot" as the main claim. The intermediate framing
-  asked whether self-compression failures are better explained by evidence
-  position or evidence-distractor interference. An 11-sample manual mechanism
-  audit produced the first taxonomy: compression effect, downstream error,
-  compression-vs-reasoning attribution, distractor volume, local competition
-  density, recent verbatim effect, hybrid benefit source, answer quality, and
-  audit confidence.
-- 2026-06-14: **Scale100 formal run completed and framing refined.** The current
-  main run contains 100 selected formal samples and 300 final inferences:
-  `full_history` 100/100, `one_shot_summary` 85/100,
-  `hybrid_summary_recent` 86/100. The aggregate result shows little architecture
-  main effect, but stratification by `critical_evidence_in_recent_turn` reveals a
-  sign-reversing trade-off: hybrid +14pp when answer-critical evidence is recent
-  and -12pp when it is not. The primary RQ is now the recency-relevance trade-off;
-  the 22-case manual annotation is secondary mechanism evidence.
+  generation, and audit pipeline built. Assistant prompt updated to natural
+  intermediate reasoning style.
+- 2026-06-13: **Formal 40-sample run completed.** Full-history 40/40, one-shot
+  31/40, hybrid 36/40. 11-sample manual mechanism annotation produced the first
+  taxonomy.
+- 2026-06-14: **Scale100 formal runs (Qwen + Gemma) completed.** Qwen3-8B (100
+  samples): FH 100/100, OS 85/100, HY 86/100. The aggregate parity masked a
+  sign-reversing architecture-by-position interaction: hybrid +14pp when
+  answer-critical evidence is recent, -12pp when it is not. Gemma4-E4B (100
+  samples): FH 100/100, OS 94/100, HY 94/100 — same directional pattern but
+  attenuated effect sizes.
+- 2026-06-14: **Framing refined.** Primary RQ is now: under a fixed
+  compressed-history budget, does retaining recent turns verbatim improve
+  compressed multi-turn reasoning, or does it create a position-dependent
+  trade-off? Architecture is a diagnostic intervention, not a leaderboard.
+- 2026-06-15: **Scale500 runs completed (Qwen + Gemma).** Qwen3-8B: 486 fh-pass
+  samples, OS 81.1%, HY 89.1%. Pairwise: OS✗HY✓=61, HY✗OS✓=25 (2.4:1).
+  Gemma4-E4B: 499 fh-pass samples, OS 92.2%, HY 93.0%. Pairwise: OS✗HY✓=31,
+  HY✗OS✓=27 (nearly symmetric). Cross-model directional consistency confirmed:
+  hybrid + on late/cross_turn, - on far_early/far_middle in both models.
+- 2026-06-15: **Embedding metrics deployed.** Evidence similarity (ev_sim),
+  answer fidelity, and reasoning similarity computed on both 500-case runs
+  (fh-pass only). ev_sim reveals a dissociation: far_early ev_sim is highest
+  (~0.76) but accuracy is lowest (~77%); late ev_sim is lowest (~0.13) but
+  hybrid accuracy is highest (~97%). This separates evidence omission from
+  distractor interference as independent mechanisms.
+- 2026-06-15: **Context-pressure audit.** Current full-history mean is ~1300
+  tokens with an 800-token budget (~1.6x compression). This is mild compression
+  suitable for mechanism discovery, not a simulation of production overflow.
+- 2026-06-15: **Manual annotation completed.** 22-case Qwen-100 annotation,
+  14-case Gemma-500 annotation, and 22-case Qwen-500 annotation produced a
+  stable two-column taxonomy (compression_effect × downstream_error).
 
 ## Next Steps
 
-1. Write the results narrative around aggregate masking and the
-   architecture-by-position interaction.
-2. Use the 22-case annotation to explain mechanisms: older-evidence omission,
-   distractor overweighting, recent-distractor interference, and
-   reasoning-primary errors.
-3. Decide whether to add supplementary validation: budget sweep, multi-model
-   check, or Layer 2 external validation.
-4. Draft the Chinese paper around the claim: recent-turn retention is useful but
-   conditional, because it is a recency-biased allocation of a fixed context
-   budget.
+1. **Long-dialogue robustness set.** Generate 50 longer dialogues (14-16 turns,
+   target full-history 3000-5000 tokens) using the same pipeline. Verify that
+   the position-dependent trade-off and recency paradox replicate under ~3-4x
+   compression pressure. Full-history gate must still pass.
+
+2. **Budget ablation on long dialogues.** Test 800 and 1000 token budgets on
+   the 50 long-dialogue samples. If the recency paradox amplifies under tighter
+   budgets and attenuates under looser budgets, the mechanism is causal.
+
+3. **Write the results narrative.** Primary claim: architecture choice matters
+   only conditionally on evidence position — hybrid protects recent evidence
+   perfectly (+14pp) but starves older evidence (-12pp). Secondary: evidence
+   omission and distractor interference are separable mechanisms with
+   embedding-level evidence. Supporting: cross-model replication (Qwen +
+   Gemma).
+
+4. **Draft the Chinese course paper.** Motivation centered on bounded
+   active-context budget / evidence visibility under compression — not on token
+   cost saving.
 
 ## Legacy Note
 

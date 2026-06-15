@@ -46,6 +46,10 @@ def get_supporting_paragraphs(item):
     return [p for p in item.get("paragraphs") or [] if p.get("is_supporting")]
 
 
+def get_non_supporting_paragraphs(item):
+    return [p for p in item.get("paragraphs") or [] if not p.get("is_supporting")]
+
+
 def get_required_evidence(item):
     paragraphs = item.get("paragraphs") or []
     evidence = []
@@ -101,6 +105,7 @@ def build_candidate(item):
         "required_evidence": get_required_evidence(item),
         "paragraph_count": len(item.get("paragraphs") or []),
         "supporting_paragraph_count": len(get_supporting_paragraphs(item)),
+        "non_supporting_paragraphs": get_non_supporting_paragraphs(item),
         "raw_question_decomposition": item.get("question_decomposition") or [],
         "mc_conversion_status": "pending",
         "dialogue_generation_status": "pending",

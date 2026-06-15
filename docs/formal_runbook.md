@@ -263,6 +263,22 @@ Gate results:
 runs/<RUN_ID>/gate/inference/summary.json
 ```
 
+Embedding metrics (run after inference completes):
+
+```powershell
+ssh sjtu-a800 "cd /data/gaojc/projects/nlp_course_paper && \
+  /data/gaojc/mamba/envs/cotx/bin/python scripts/08_compute_embedding_metrics.py \
+  --run-dir runs/<RUN_ID> \
+  > runs/<RUN_ID>/logs/embedding_metrics.log 2>&1 &"
+```
+
+Check embedding metrics summary:
+
+```powershell
+ssh sjtu-a800 "cd /data/gaojc/projects/nlp_course_paper && \
+  cat runs/<RUN_ID>/formal/metrics/embedding_metrics_summary.json"
+```
+
 ## Current Reference Runs
 
 Use these as comparison anchors:
@@ -272,6 +288,6 @@ Use these as comparison anchors:
 | `layer1_scale100_qwen3_8b_budget800_20260614` | Qwen3-8B | 100 | Complete |
 | `layer1_scale500_qwen3_8b_budget800_20260614` | Qwen3-8B | 500 | Complete |
 | `layer1_scale100_gemma4_e4b_budget800_20260615` | Gemma4 E4B | 100 | Complete |
-| `layer1_scale500_gemma4_e4b_budget800_20260615` | Gemma4 E4B | 500 | Running as of 2026-06-15 |
+| `layer1_scale500_gemma4_e4b_budget800_20260615` | Gemma4 E4B | 500 | Complete |
 
 Update this table when a run completes or is abandoned.

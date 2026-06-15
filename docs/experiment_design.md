@@ -343,14 +343,35 @@ main accuracy interaction rather than determining the primary result.
 
 ### 5. Manual Critical-Case Annotation
 
-- Select critical compressed-condition cases after automatic inference results:
-  one-shot wrong / hybrid right, one-shot right / hybrid wrong, and both wrong.
-- Annotate failure mechanisms to explain the main position-dependent accuracy
-  interaction.
-- Treat annotation as mechanism evidence, not the primary result.
+- Select critical compressed-condition cases after automatic inference results.
+- Annotate failure mechanisms (evidence omission, distractor overweighting,
+  recent-distractor interference, reasoning-primary) to explain the
+  architecture-by-position interaction.
+- Annotation is mechanism evidence, not the primary result.
 
-### 6. Supplementary (optional)
-- Budget sweep: 300 / 600 / 900 tokens on 10 samples.
+### 6. Cross-Model Validation
+
+- Replicate the main experiment on a second model (Gemma4-E4B).
+- Verify that the architecture-by-position interaction direction is consistent.
+- Completed: Gemma-500 run (499 fh-pass, OS 92.2%, HY 93.0%).
+
+### 7. Long-Dialogue Robustness Set
+
+- Generate 50 longer dialogues (14-16 turns) using the same MuSiQue pipeline.
+- Target full-history: 3000-5000 tokens (~3-4x current mean).
+- Verify that position-dependent trade-off and recency paradox replicate under
+  higher compression pressure.
+- Full-history gate must still pass for all samples.
+
+### 8. Budget Ablation (on long dialogues)
+
+- Test 800 and 1000 token compression budgets on the 50 long-dialogue samples.
+- Tighter budget (800, ~4-6x compression): recency paradox should amplify.
+- Looser budget (1000, ~3-5x compression): recency paradox should attenuate.
+- Confirms information density as the causal mechanism.
+
+### 9. Supplementary (optional)
+- Embedding-based metrics (ev_sim, ans_fid, reason_sim) for compression quality.
+- Multi-model embedding metric comparison.
 - Larger thinking budget sanity check.
 - Smaller summarizer model ablation.
-- Multi-model or Layer 2 validation of the recency-relevance trade-off.

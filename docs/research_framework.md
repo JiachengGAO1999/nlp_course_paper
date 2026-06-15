@@ -194,9 +194,31 @@ Completed:
 
 - Layer 1 benchmark selected: MuSiQue-Ans.
 - MuSiQue sampling, MC conversion, dialogue generation, and audit code are built.
-- Code has been refactored so reusable logic lives in `src/` and CLI entrypoints
-  live in `scripts/`.
-- The dialogue style has been updated to natural intermediate reasoning.
+- Code refactored: reusable logic in `src/`, CLI entrypoints in `scripts/`.
+- Dialogue style: natural intermediate reasoning assistant.
+- **Formal 40-sample run (Qwen3-8B).** FH 40/40, OS 31/40, HY 36/40.
+- **Scale100 runs (Qwen3-8B + Gemma4-E4B).** Both models: FH 100/100. Qwen:
+  OS 85, HY 86. Gemma: OS 94, HY 94. Aggregate parity masks sign-reversing
+  architecture-by-position interaction.
+- **Scale500 runs (Qwen3-8B + Gemma4-E4B).** Qwen (486 fh-pass): OS 81.1%,
+  HY 89.1%, pairwise OSxHYv=61 HYxOSv=25 (2.4:1). Gemma (499 fh-pass): OS
+  92.2%, HY 93.0%, pairwise OSxHYv=31 HYxOSv=27. Cross-model directional
+  consistency confirmed.
+- **Embedding metrics (ev_sim, ans_fid, reason_sim).** ev_sim reveals
+  dissociation between evidence retention and accuracy, separating evidence
+  omission from distractor interference as independent mechanisms.
+- **Manual annotation.** 22-case (Qwen-100), 22-case (Qwen-500), and 14-case
+  (Gemma-500) annotations produce a stable two-column taxonomy.
+- **Context-pressure audit.** Current full-history mean ~1300 tokens, budget
+  800 tokens (~1.6x). Mild compression — suitable for mechanism discovery but
+  not production-overflow simulation. Long-dialogue robustness set planned.
+
+Next:
+
+- Generate 50-sample long-dialogue robustness set (3000-5000 tokens full-history).
+- Run budget ablation (800/1000) on long dialogues to test causal mechanism.
+- Write results narrative around conditional architecture effect.
+- Draft Chinese course paper.
 - Formal 100-sample Layer 1 run completed under Qwen3-8B.
 - Main result: aggregate accuracy shows little architecture main effect
   (`one_shot_summary` 85/100, `hybrid_summary_recent` 86/100), but stratification

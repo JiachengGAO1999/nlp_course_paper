@@ -112,8 +112,35 @@ def build_evidence_turn(ev, turn_id):
 
 def build_filler_turn(item, turn_id, filler_idx, profile):
     distractors = item.get("distractors") or []
-    distractor = distractors[filler_idx % len(distractors)] if distractors else {}
-    text = distractor.get("text", "a related but probably irrelevant item")
+    extra_paras = item.get("non_supporting_paragraphs") or []
+
+    # Use MC distractors first, then non-supporting paragraphs
+    if filler_idx < len(distractors):
+        distractor = distractors[filler_idx]
+        text = distractor.get("text", "a related but probably irrelevant item")
+    elif extra_paras:
+        para_idx = (filler_idx - len(distractors)) % len(extra_paras)
+        text = extra_paras[para_idx].get("title", "a nearby source entry")
+    else:
+        text = "a related but probably irrelevant item"
+
+    # Use longer template for non-supporting paragraph turns
+    if filler_idx >= len(distractors) and extra_paras:
+        para = extra_paras[(filler_idx - len(distractors)) % len(extra_paras)]
+        snippet = truncate_words(para.get("paragraph_text", ""), 200)
+        content = (
+            f"I also found a nearby source entry. The entry titled \"{para.get('title')}\" "
+            f"says: {snippet}\n\n"
+            f"This seems related to the general area I am looking into, but I am not sure "
+            f"it belongs to the main chain. Please keep it as loose background for now."
+        )
+        if profile == "cross_turn":
+            content += (
+                " I am still gathering pieces from different parts of the material, so "
+                "please do not draw a conclusion from this item alone."
+            )
+        return content
+
     templates = [
         (
             f"Side note {turn_id}: I also ran into \"{text}\" while looking through "
