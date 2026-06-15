@@ -27,7 +27,7 @@ def _embed(texts, model):
 
 
 def _cos_sim(a, b):
-    return float(a @ b)
+    return float(a.flatten() @ b.flatten())
 
 
 def load_model():
