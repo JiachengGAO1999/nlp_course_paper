@@ -16,6 +16,7 @@ FORMAL_PROFILE_ALLOCATION_JSON="${FORMAL_PROFILE_ALLOCATION_JSON:-}"
 
 cd "$PROJECT_DIR"
 mkdir -p "$RUN_DIR"/{logs,pool,formal,gate}
+EFFECTIVE_CONFIG="$RUN_DIR/config.effective.yaml"
 
 echo "[formal] project=$PROJECT_DIR"
 echo "[formal] python=$PYTHON"
@@ -26,6 +27,26 @@ echo "[formal] formal_target_n=${FORMAL_TARGET_N:-config-default}"
 echo "[formal] started=$(date -Is)"
 
 cp configs/experiment.yaml "$RUN_DIR/config.snapshot.yaml"
+EFFECTIVE_ARGS=()
+if [[ -n "$FORMAL_POOL_SIZE" ]]; then
+  EFFECTIVE_ARGS+=(--formal-pool-size "$FORMAL_POOL_SIZE")
+fi
+if [[ -n "$FORMAL_TARGET_N" ]]; then
+  EFFECTIVE_ARGS+=(--formal-target-n "$FORMAL_TARGET_N")
+fi
+if [[ -n "$FORMAL_POOL_HOP_ALLOCATION_JSON" ]]; then
+  EFFECTIVE_ARGS+=(--formal-pool-hop-allocation-json "$FORMAL_POOL_HOP_ALLOCATION_JSON")
+fi
+if [[ -n "$FORMAL_HOP_ALLOCATION_JSON" ]]; then
+  EFFECTIVE_ARGS+=(--formal-hop-allocation-json "$FORMAL_HOP_ALLOCATION_JSON")
+fi
+if [[ -n "$FORMAL_PROFILE_ALLOCATION_JSON" ]]; then
+  EFFECTIVE_ARGS+=(--formal-profile-allocation-json "$FORMAL_PROFILE_ALLOCATION_JSON")
+fi
+"$PYTHON" scripts/make_effective_config.py \
+  --config configs/experiment.yaml \
+  --output "$EFFECTIVE_CONFIG" \
+  "${EFFECTIVE_ARGS[@]}"
 
 echo "[formal] 1/8 prepare formal pool"
 POOL_ARGS=()
@@ -36,7 +57,7 @@ if [[ -n "$FORMAL_POOL_HOP_ALLOCATION_JSON" ]]; then
   POOL_ARGS+=(--hop-allocation-json "$FORMAL_POOL_HOP_ALLOCATION_JSON")
 fi
 "$PYTHON" scripts/07_prepare_formal_pool.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --output "$RUN_DIR/pool/formal_pool_samples.jsonl" \
   --audit "$RUN_DIR/pool/formal_pool_sampling_audit.json" \
   --preview "$RUN_DIR/pool/formal_pool_sampling_preview.md" \
@@ -44,7 +65,7 @@ fi
 
 echo "[formal] 2/8 convert formal pool to MC"
 "$PYTHON" scripts/02_convert_musique_to_mc.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --split formal_pool \
   --input "$RUN_DIR/pool/formal_pool_samples.jsonl" \
   --output "$RUN_DIR/pool/formal_pool_mc.jsonl" \
@@ -57,7 +78,7 @@ echo "[formal] 2/8 convert formal pool to MC"
 
 echo "[formal] 3/8 generate formal pool dialogues"
 "$PYTHON" scripts/03_generate_dialogues.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --split formal_pool \
   --input "$RUN_DIR/pool/formal_pool_mc.jsonl" \
   --output "$RUN_DIR/pool/formal_pool_dialogues.jsonl" \
@@ -70,7 +91,7 @@ echo "[formal] 3/8 generate formal pool dialogues"
 
 echo "[formal] 4/8 build full-history gate variants"
 "$PYTHON" scripts/04_build_compressions.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --split formal_pool \
   --conditions full_history \
   --input "$RUN_DIR/pool/formal_pool_dialogues.jsonl" \
@@ -79,7 +100,7 @@ echo "[formal] 4/8 build full-history gate variants"
 
 echo "[formal] 5/8 run full-history gate"
 "$PYTHON" scripts/05_run_inference.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --variants "$RUN_DIR/gate/formal_pool_full_history_variants.jsonl" \
   --run-dir "$RUN_DIR/gate/inference" \
   --base-url "$BASE_URL" \
@@ -99,7 +120,7 @@ if [[ -n "$FORMAL_PROFILE_ALLOCATION_JSON" ]]; then
   SELECT_ARGS+=(--profile-allocation-json "$FORMAL_PROFILE_ALLOCATION_JSON")
 fi
 "$PYTHON" scripts/06_select_formal_set.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --dialogues "$RUN_DIR/pool/formal_pool_dialogues.jsonl" \
   --results "$RUN_DIR/gate/inference/generations.parsed.jsonl" \
   --output "$RUN_DIR/formal/formal_selected_dialogues.jsonl" \
@@ -108,7 +129,7 @@ fi
 
 echo "[formal] 7/8 build formal variants"
 "$PYTHON" scripts/04_build_compressions.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --split formal \
   --input "$RUN_DIR/formal/formal_selected_dialogues.jsonl" \
   --output "$RUN_DIR/formal/formal_variants.jsonl" \
@@ -120,7 +141,7 @@ echo "[formal] 7/8 build formal variants"
 
 echo "[formal] 8/8 run formal inference"
 "$PYTHON" scripts/05_run_inference.py \
-  --config configs/experiment.yaml \
+  --config "$EFFECTIVE_CONFIG" \
   --variants "$RUN_DIR/formal/formal_variants.jsonl" \
   --run-dir "$RUN_DIR/formal/inference" \
   --base-url "$BASE_URL" \
