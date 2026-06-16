@@ -15,6 +15,9 @@ runs/
 # Local reading/reference materials
 refs/
 
+# Output files (figures, slides, compiled PDFs)
+outputs/
+
 # Logs and temporary files
 *.log
 *.tmp
